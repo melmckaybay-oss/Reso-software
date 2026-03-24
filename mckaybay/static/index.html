@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>McKay Bay Lodge — Reservations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Custom styles ── */
+    body { font-family: system-ui, -apple-system, sans-serif; }
+
+    /* Calendar grid */
+    .calendar-grid { overflow-x: auto; overflow-y: visible; }
+    .cal-cell {
+      min-width: 36px; width: 36px; height: 40px;
+      border-right: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+      position: relative;
+      cursor: pointer;
+    }
+    .cal-cell:hover { background: #f0f9ff; }
+    .cal-cell.today-col { background: #fefce8; }
+    .cal-cell.today-col:hover { background: #fde68a44; }
+    .cal-cell.weekend { background: #f9fafb; }
+
+    /* Reservation bars — absolutely positioned inside row */
+    .res-bar {
+      position: absolute;
+      height: 28px;
+      top: 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: filter 0.1s;
+    }
+    .res-bar:hover { filter: brightness(1.1); }
+
+    /* Status colours */
+    .status-pending    { background: #fde68a; color: #92400e; }
+    .status-confirmed  { background: #3b82f6; color: white; }
+    .status-checked_in { background: #10b981; color: white; }
+    .status-checked_out{ background: #9ca3af; color: white; }
+    .status-cancelled  { background: #ef4444; color: white; }
+
+    /* Row labels */
+    .row-label {
+      min-width: 140px; width: 140px;
+      padding: 0 10px;
+      height: 40px;
+      display: flex; align-items: center;
+      font-size: 13px;
+      font-weight: 500;
+      border-right: 2px solid #d1d5db;
+      border-bottom: 1px solid #e5e7eb;
+      background: white;
+      position: sticky; left: 0; z-index: 20;
+    }
+    .row-label.section-header {
+      background: #f1f5f9;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+    }
+
+    /* Date header cells */
+    .date-header-cell {
+      min-width: 36px; width: 36px; height: 36px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 500;
+      border-right: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+    .date-header-cell.today-col { background: #fef08a; color: #713f12; font-weight: 700; }
+    .date-header-cell.weekend   { color: #9ca3af; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 60px; z-index: 100; overflow-y: auto;
+    }
+    .modal-box {
+      background: white; border-radius: 12px;
+      width: 100%; max-width: 720px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      margin: 0 16px 60px;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: fixed; z-index: 200;
+      background: #1e293b; color: white;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 13px; pointer-events: none;
+      max-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* Scrollbar */
+    .calendar-grid::-webkit-scrollbar { height: 6px; }
+    .calendar-grid::-webkit-scrollbar-track { background: #f1f5f9; }
+    .calendar-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    input, select, textarea {
+      border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 10px;
+      font-size: 14px; width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    label { font-size: 13px; font-weight: 500; color: #374151; display: block; margin-bottom: 3px; }
+    .btn {
+      padding: 8px 16px; border-radius: 6px; font-size: 14px;
+      font-weight: 500; cursor: pointer; transition: background 0.15s;
+      border: none; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fca5a5; }
+    .btn-success { background: #d1fae5; color: #065f46; }
+    .btn-success:hover { background: #a7f3d0; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- ── Navigation ── -->
+  <nav class="bg-slate-800 text-white px-4 py-3 flex items-center gap-4 sticky top-0 z-30">
+    <div class="flex items-center gap-2">
+      <span class="text-lg font-bold text-white">🏔 McKay Bay Lodge</span>
+      <span class="text-slate-400 text-sm">Reservations</span>
+    </div>
+    <div class="flex-1"></div>
+    <button onclick="App.showView('calendar')" id="nav-calendar"
+      class="btn btn-secondary text-sm py-1.5 bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+      📅 Calendar
+    </button>
+    <button onclick="App.showView('daily')" id="nav-daily"
+      class="btn btn-secondary text-sm py-1.5 bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+      📋 Daily
+    </button>
+    <button onclick="App.showView('guests')" id="nav-guests"
+      class="btn btn-secondary text-sm py-1.5 bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+      👥 Guests
+    </button>
+    <button onclick="App.openNewReservation()"
+      class="btn btn-primary text-sm py-1.5">
+      + New Reservation
+    </button>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main id="main-content" class="p-4"></main>
+
+  <!-- ── Tooltip ── -->
+  <div id="tooltip" class="tooltip hidden"></div>
+
+  <!-- ── Modal ── -->
+  <div id="modal" class="modal-backdrop hidden" onclick="App.closeModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="calendar.js"></script>
+  <script src="form.js"></script>
+  <script src="daily.js"></script>
+  <script src="guests.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
