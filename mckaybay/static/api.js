@@ -60,4 +60,13 @@ const API = {
   dailyDepartures:   (date)  => API.get(`/daily/departures?date=${date}`),
   dailyMeals:        (date)  => API.get(`/daily/meals?date=${date}`),
   dailyHousekeeping: (date)  => API.get(`/daily/housekeeping?date=${date}`),
+  dailyNotes:        (date)  => API.get(`/daily/notes?date=${date}`),
+  saveDailyNotes:    (date, notes) => API.post(`/daily/notes?date=${date}`, {notes}),
+  reservationNotes:  (id)    => API.get(`/reservations/${id}/notes`),
+  saveReservationNotes: (id, notes) => API.patch(`/reservations/${id}/notes`, {notes}),
+  staff:             ()      => API.get(`/staff`),
+  addStaff:          (name)  => API.post(`/staff`, {name}),
+  deleteStaff:       (id)    => API.del(`/staff/${id}`),
+  staffSchedule:     (s, e)  => API.get(`/staff/schedule?start=${s}&end=${e}`),
+  saveShift:         (data)  => API.post(`/staff/schedule`, data),
 };
