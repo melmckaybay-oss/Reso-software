@@ -380,8 +380,112 @@ def handle_daily(handler, method, path_parts, qs, body):
         db.close()
         return json_response(handler, rows_to_list(checkouts))
 
+    if view == "notes":
+        if method == "GET":
+            row = db.execute(
+                "SELECT * FROM daily_notes WHERE date=?", (date_param,)
+            ).fetchone()
+            db.close()
+            return json_response(handler, row_to_dict(row) or {"date": date_param, "notes": ""})
+        if method in ("POST", "PUT"):
+            notes = body.get("notes", "")
+            db.execute(
+                "INSERT INTO daily_notes (date, notes) VALUES (?,?) ON CONFLICT(date) DO UPDATE SET notes=excluded.notes",
+                (date_param, notes)
+            )
+            db.commit()
+            db.close()
+            return json_response(handler, {"date": date_param, "notes": notes})
+
     db.close()
     error_response(handler, "Unknown daily view", 404)
+
+
+def handle_staff(handler, method, path_parts, qs, body):
+    db = get_db()
+
+    # GET /api/staff — list all staff
+    if method == "GET" and len(path_parts) == 2:
+        rows = db.execute("SELECT * FROM staff ORDER BY sort_order, name").fetchall()
+        db.close()
+        return json_response(handler, rows_to_list(rows))
+
+    # POST /api/staff — add staff member
+    if method == "POST" and len(path_parts) == 2:
+        name = body.get("name", "").strip()
+        if not name:
+            db.close()
+            return error_response(handler, "Name required")
+        max_order = db.execute("SELECT COALESCE(MAX(sort_order),0) FROM staff").fetchone()[0]
+        cur = db.execute("INSERT INTO staff (name, sort_order) VALUES (?,?)", (name, max_order+1))
+        db.commit()
+        row = row_to_dict(db.execute("SELECT * FROM staff WHERE id=?", (cur.lastrowid,)).fetchone())
+        db.close()
+        return json_response(handler, row, 201)
+
+    # DELETE /api/staff/<id>
+    if method == "DELETE" and len(path_parts) == 3:
+        sid = int(path_parts[2])
+        db.execute("DELETE FROM staff WHERE id=?", (sid,))
+        db.execute("DELETE FROM staff_schedule WHERE staff_id=?", (sid,))
+        db.commit()
+        db.close()
+        return json_response(handler, {"deleted": sid})
+
+    # GET /api/staff/schedule?start=YYYY-MM-DD&end=YYYY-MM-DD
+    if method == "GET" and len(path_parts) == 3 and path_parts[2] == "schedule":
+        start = qs.get("start", [None])[0]
+        end   = qs.get("end",   [None])[0]
+        if not start or not end:
+            db.close()
+            return error_response(handler, "start and end required")
+        rows = db.execute(
+            "SELECT * FROM staff_schedule WHERE work_date >= ? AND work_date <= ?",
+            (start, end)
+        ).fetchall()
+        db.close()
+        return json_response(handler, rows_to_list(rows))
+
+    # POST /api/staff/schedule — save a single cell (staff_id, date, role)
+    if method == "POST" and len(path_parts) == 3 and path_parts[2] == "schedule":
+        sid   = body.get("staff_id")
+        date  = body.get("work_date")
+        role  = body.get("role", "").strip()
+        if not sid or not date:
+            db.close()
+            return error_response(handler, "staff_id and work_date required")
+        if role:
+            db.execute(
+                "INSERT INTO staff_schedule (staff_id, work_date, role) VALUES (?,?,?) "
+                "ON CONFLICT(staff_id, work_date) DO UPDATE SET role=excluded.role",
+                (sid, date, role)
+            )
+        else:
+            db.execute("DELETE FROM staff_schedule WHERE staff_id=? AND work_date=?", (sid, date))
+        db.commit()
+        db.close()
+        return json_response(handler, {"staff_id": sid, "work_date": date, "role": role})
+
+    db.close()
+    return error_response(handler, "Not found", 404)
+
+
+def handle_reservation_notes(handler, method, path_parts, qs, body):
+    """GET/POST /api/reservations/<id>/notes"""
+    db  = get_db()
+    rid = int(path_parts[2])
+    if method == "GET":
+        row = db.execute("SELECT notes FROM reservations WHERE id=?", (rid,)).fetchone()
+        db.close()
+        return json_response(handler, {"notes": row["notes"] if row else ""})
+    if method in ("POST", "PUT", "PATCH"):
+        notes = body.get("notes", "")
+        db.execute("UPDATE reservations SET notes=? WHERE id=?", (notes, rid))
+        db.commit()
+        db.close()
+        return json_response(handler, {"notes": notes})
+    db.close()
+    return error_response(handler, "Method not allowed", 405)
 
 
 # ── Main request handler ───────────────────────────────────────────────────────
@@ -422,9 +526,14 @@ class Handler(BaseHTTPRequestHandler):
             if resource == "guests":
                 return handle_guests(self, method, path_parts, qs, body)
             if resource == "reservations":
+                # Check for /api/reservations/<id>/notes
+                if len(path_parts) == 4 and path_parts[3] == "notes":
+                    return handle_reservation_notes(self, method, path_parts, qs, body)
                 return handle_reservations(self, method, path_parts, qs, body)
             if resource == "daily":
                 return handle_daily(self, method, path_parts, qs, body)
+            if resource == "staff":
+                return handle_staff(self, method, path_parts, qs, body)
 
         error_response(self, "Not found", 404)
 
