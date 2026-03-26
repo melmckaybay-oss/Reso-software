@@ -7,11 +7,12 @@ const Calendar = (() => {
   const CELL_W  = 36;
   const LABEL_W = 140;
 
-  let accommodations = [];
-  let reservations   = [];
-  let viewStart      = null;
-  let viewDays       = 56;
-  const tooltip      = () => document.getElementById("tooltip");
+  let accommodations      = [];
+  let reservations        = [];
+  let viewStart           = null;
+  let viewDays            = 56;
+  let showContractorBoats = false;
+  const tooltip           = () => document.getElementById("tooltip");
 
   // ── Date helpers ──────────────────────────────────────────────────────────
 
@@ -46,15 +47,20 @@ const Calendar = (() => {
     const t    = today();
     const days = Array.from({ length: viewDays }, (_, i) => addDays(viewStart, i));
 
-    const lodgeRooms = accommodations.filter(a => a.type === "lodge_room");
-    const cabins     = accommodations.filter(a => a.type === "cabin");
-    const suites     = accommodations.filter(a => a.type === "suite");
+    const lodgeRooms      = accommodations.filter(a => a.type === "lodge_room");
+    const cabins          = accommodations.filter(a => a.type === "cabin");
+    const suites          = accommodations.filter(a => a.type === "suite");
+    const charterBoats    = accommodations.filter(a => a.type === "charter_boat");
+    const contractorBoats = accommodations.filter(a => a.type === "contractor_boat");
 
     const rows = [
       { label: "Lodge Rooms", isHeader: true },
       ...lodgeRooms,
       { label: "Cabins & Suite", isHeader: true },
       ...cabins, ...suites,
+      { label: "Charter Boats", isHeader: true },
+      ...charterBoats,
+      ...(showContractorBoats ? contractorBoats : []),
     ];
 
     // ── Date header ──
@@ -165,7 +171,8 @@ const Calendar = (() => {
       ${chNum ? `<div>🎣 ${chNum} charter day${chNum !== 1 ? "s" : ""}</div>` : ""}
       ${res.arrival_method ? `<div>✈ Arriving by ${res.arrival_method.replace("_", " ")}</div>` : ""}
       ${diets.length ? `<div style="margin-top:5px;color:#fca5a5;font-weight:600">⚠ Dietary: ${diets.join(" | ")}</div>` : ""}
-      <div style="margin-top:5px;opacity:0.6;font-size:11px">Click to edit</div>`;
+      ${res.notes    ? `<div style="margin-top:5px;color:#fde68a;font-style:italic">📝 ${res.notes.length > 80 ? res.notes.slice(0,80)+"…" : res.notes}</div>` : ""}
+      <div style="margin-top:5px;opacity:0.6;font-size:11px">Click to view / edit notes</div>`;
     tt.classList.remove("hidden");
     moveTooltip(event);
     document.addEventListener("mousemove", moveTooltip);
@@ -189,6 +196,15 @@ const Calendar = (() => {
   function navigate(delta) { viewStart = addDays(viewStart, delta); refresh(); }
   function jumpToToday()   { viewStart = addDays(today(), -7);      refresh(); }
   function setViewDays(n)  { viewDays  = n;                         refresh(); }
+  function toggleContractorBoats() { showContractorBoats = !showContractorBoats; refresh(); }
+
+  function jumpToDate(val) {
+    if (!val) return;
+    const d = new Date(val + "T12:00:00");
+    if (isNaN(d)) return;
+    viewStart = addDays(d, -7);
+    refresh();
+  }
 
   function cellClick(dateStr, accomId) { App.openNewReservation(dateStr, accomId); }
   function barClick(event, resId) { event.stopPropagation(); hideTooltip(); App.openReservation(resId); }
@@ -219,7 +235,20 @@ const Calendar = (() => {
         <button class="btn btn-secondary" onclick="Calendar.jumpToToday()">Today</button>
         <button class="btn btn-secondary" onclick="Calendar.navigate(30)">Month →</button>
         <button class="btn btn-secondary" onclick="Calendar.navigate(7)">Week →</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+          <label style="margin:0;font-size:12px;color:#6b7280;white-space:nowrap;">Jump to:</label>
+          <input type="month" style="width:150px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
+            onchange="Calendar.jumpToDate(this.value + '-01')"
+            title="Jump to a month" />
+          <input type="date" style="width:150px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
+            onchange="Calendar.jumpToDate(this.value)"
+            title="Jump to a specific date" />
+        </div>
         <div class="flex-1"></div>
+        <button class="btn btn-secondary text-xs py-1" style="border:1px solid ${showContractorBoats ? '#3b82f6' : '#d1d5db'};color:${showContractorBoats ? '#2563eb' : '#374151'};background:${showContractorBoats ? '#eff6ff' : '#f1f5f9'};"
+          onclick="Calendar.toggleContractorBoats()" title="Show/hide contractor charter boats">
+          ⛵ ${showContractorBoats ? 'Hide' : 'Show'} Contractor Boats
+        </button>
         <select onchange="Calendar.setViewDays(+this.value)"
           style="width:auto;padding:5px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:6px">
           <option value="28"  ${viewDays === 28  ? "selected" : ""}>4 weeks</option>
@@ -251,5 +280,5 @@ const Calendar = (() => {
     await refresh();
   }
 
-  return { init, refresh, navigate, jumpToToday, setViewDays, cellClick, barClick, showTooltip, hideTooltip };
+  return { init, refresh, navigate, jumpToToday, jumpToDate, setViewDays, toggleContractorBoats, cellClick, barClick, showTooltip, hideTooltip };
 })();

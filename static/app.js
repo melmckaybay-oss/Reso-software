@@ -8,7 +8,7 @@ const App = (() => {
 
   function showView(view) {
     currentView = view;
-    ["calendar","daily","guests"].forEach(v => {
+    ["calendar","daily","guests","emails","staff"].forEach(v => {
       const btn = document.getElementById(`nav-${v}`);
       if (!btn) return;
       btn.style.background = (v === view) ? "#1e40af" : "";
@@ -17,6 +17,8 @@ const App = (() => {
     if (view === "calendar") return Calendar.init().catch(showError);
     if (view === "daily")    return Daily.render().catch(showError);
     if (view === "guests")   return Guests.render().catch(showError);
+    if (view === "emails")   return Emails.render().catch(showError);
+    if (view === "staff")    return Staff.render().catch(showError);
   }
 
   function showLoading() {
@@ -174,6 +176,19 @@ const App = (() => {
             <button class="btn btn-primary" onclick="App.editReservation(${res.id})">✏ Edit</button>
           </div>
         </div>
+
+        <!-- Internal notes (staff only — not visible to guest) -->
+        <div class="mt-5 pt-4 border-t">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-semibold text-gray-500 uppercase">🔒 Internal Notes <span class="font-normal text-gray-400">(staff only — not sent to guest)</span></div>
+            <button onclick="App.saveResNotes(${res.id})" class="btn btn-secondary text-xs py-1">Save Notes</button>
+          </div>
+          <textarea id="res-notes-${res.id}" rows="4"
+            style="font-size:13px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;resize:vertical;"
+            placeholder="Add internal notes here… e.g. John wants lunch at 1pm on Tuesday, requests extra towels, prefers room facing the water, etc."
+          >${res.notes || ""}</textarea>
+          <p class="text-xs text-gray-400 mt-1">These notes are visible to staff only and will never appear on guest-facing emails.</p>
+        </div>
       </div>`;
   }
 
@@ -229,10 +244,24 @@ const App = (() => {
     showView("calendar");
   }
 
+  async function saveResNotes(resId) {
+    const ta = document.getElementById(`res-notes-${resId}`);
+    if (!ta) return;
+    try {
+      await API.saveReservationNotes(resId, ta.value);
+      // Flash the textarea green briefly
+      ta.style.background = "#d1fae5";
+      setTimeout(() => { ta.style.background = "#fffbeb"; }, 1000);
+      // Update the in-memory reservation so tooltip reflects new notes
+      const cached = reservations ? reservations.find(r => r.id === resId) : null;
+      if (cached) cached.notes = ta.value;
+    } catch(e) { alert("Could not save notes: " + e.message); }
+  }
+
   return {
     showView, showLoading, showError,
     openReservation, openNewReservation, editReservation, changeStatus,
-    closeModal, init,
+    closeModal, init, saveResNotes,
   };
 })();
 
