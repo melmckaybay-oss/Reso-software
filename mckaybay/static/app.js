@@ -100,6 +100,7 @@ const App = (() => {
             <div class="text-xs font-semibold text-blue-700 uppercase mb-2">Contact</div>
             ${res.phone ? `<div class="text-sm">📞 ${res.phone}</div>` : ""}
             ${res.email ? `<div class="text-sm">✉ ${res.email}</div>` : ""}
+            <div class="text-sm mt-1">${res.cc_on_file ? `<span class="text-green-700 font-medium">💳 Credit card on file</span>` : `<span class="text-gray-400">💳 No credit card on file</span>`}</div>
             ${!res.phone && !res.email ? `<div class="text-sm text-gray-400">No contact info</div>` : ""}
           </div>
         </div>
@@ -172,6 +173,7 @@ const App = (() => {
             ${res.status !== "cancelled" && res.status !== "checked_out" ? `<button class="btn btn-danger text-xs py-1.5" onclick="App.changeStatus(${res.id},'cancelled')">Cancel</button>` : ""}
           </div>
           <div class="flex gap-2">
+            <button class="btn btn-secondary" onclick="App.openEmailForReservation(${res.id})">✉ Email Guest</button>
             <button class="btn btn-secondary" onclick="App.closeModal()">Close</button>
             <button class="btn btn-primary" onclick="App.editReservation(${res.id})">✏ Edit</button>
           </div>
@@ -249,19 +251,26 @@ const App = (() => {
     if (!ta) return;
     try {
       await API.saveReservationNotes(resId, ta.value);
-      // Flash the textarea green briefly
       ta.style.background = "#d1fae5";
       setTimeout(() => { ta.style.background = "#fffbeb"; }, 1000);
-      // Update the in-memory reservation so tooltip reflects new notes
       const cached = reservations ? reservations.find(r => r.id === resId) : null;
       if (cached) cached.notes = ta.value;
     } catch(e) { alert("Could not save notes: " + e.message); }
   }
 
+  async function openEmailForReservation(resId) {
+    closeModal();
+    App.showView("emails");
+    // Wait for emails view to render then pre-select this reservation
+    setTimeout(() => {
+      if (typeof Emails !== "undefined") Emails.selectReservation(resId);
+    }, 400);
+  }
+
   return {
     showView, showLoading, showError,
     openReservation, openNewReservation, editReservation, changeStatus,
-    closeModal, init, saveResNotes,
+    closeModal, init, saveResNotes, openEmailForReservation,
   };
 })();
 

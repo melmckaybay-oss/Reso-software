@@ -65,14 +65,15 @@ const Calendar = (() => {
 
     // ── Date header ──
     let html = `<div style="display:flex;position:sticky;top:0;z-index:25;background:white;border-bottom:2px solid #cbd5e1;">`;
-    html += `<div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:36px;position:sticky;left:0;z-index:26;background:#f8fafc;border-right:2px solid #d1d5db;flex-shrink:0;"></div>`;
+    html += `<div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:48px;position:sticky;left:0;z-index:26;background:#f8fafc;border-right:2px solid #d1d5db;flex-shrink:0;"></div>`;
     days.forEach(d => {
       const isToday   = isoDate(d) === isoDate(t);
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
       const showMonth = d.getDate() === 1 || daysBetween(viewStart, d) === 0;
-      html += `<div class="date-header-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}">
-        <span style="font-size:9px;opacity:0.6;line-height:1">${showMonth ? d.toLocaleDateString("en-CA", { month: "short" }) : ""}</span>
-        <span style="line-height:1">${d.getDate()}</span>
+      const dayName   = d.toLocaleDateString("en-CA", { weekday: "short" });
+      html += `<div class="date-header-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}" style="height:48px;">
+        <span style="font-size:9px;opacity:0.6;line-height:1">${showMonth ? d.toLocaleDateString("en-CA", { month: "short" }) : dayName}</span>
+        <span style="line-height:1;font-weight:${isWeekend||isToday?'700':'500'}">${d.getDate()}</span>
       </div>`;
     });
     html += `</div>`;
@@ -237,12 +238,12 @@ const Calendar = (() => {
         <button class="btn btn-secondary" onclick="Calendar.navigate(7)">Week →</button>
         <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
           <label style="margin:0;font-size:12px;color:#6b7280;white-space:nowrap;">Jump to:</label>
-          <input type="month" style="width:150px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
-            onchange="Calendar.jumpToDate(this.value + '-01')"
+          <input type="month" id="cal-jump-month" style="width:140px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
             title="Jump to a month" />
-          <input type="date" style="width:150px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
-            onchange="Calendar.jumpToDate(this.value)"
+          <button class="btn btn-secondary text-xs py-1" onclick="Calendar.jumpToDate(document.getElementById('cal-jump-month').value + '-01')">Go</button>
+          <input type="date" id="cal-jump-date" style="width:140px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
             title="Jump to a specific date" />
+          <button class="btn btn-secondary text-xs py-1" onclick="Calendar.jumpToDate(document.getElementById('cal-jump-date').value)">Go</button>
         </div>
         <div class="flex-1"></div>
         <button class="btn btn-secondary text-xs py-1" style="border:1px solid ${showContractorBoats ? '#3b82f6' : '#d1d5db'};color:${showContractorBoats ? '#2563eb' : '#374151'};background:${showContractorBoats ? '#eff6ff' : '#f1f5f9'};"
