@@ -6,7 +6,7 @@ Uses Python's built-in sqlite3 — no installation required.
 import sqlite3
 import os
 
-DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "mckaybay.db"))
+DB_PATH = os.environ.get("DB_PATH", "/app/data/mckaybay.db")
 
 
 def get_db():
@@ -59,7 +59,8 @@ def init_db():
             arrival_method   TEXT,
             num_guests       INTEGER NOT NULL DEFAULT 1,
             special_requests TEXT,
-            notes            TEXT,
+            mobility         TEXT,
+            cc_on_file       INTEGER NOT NULL DEFAULT 0,
             how_heard        TEXT,
             created_at       TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (guest_id) REFERENCES guests(id)
@@ -112,90 +113,40 @@ def init_db():
         )
     """)
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS daily_notes (
-            date  TEXT PRIMARY KEY,
-            notes TEXT NOT NULL DEFAULT ''
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS staff (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            name       TEXT NOT NULL,
-            sort_order INTEGER DEFAULT 0
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS staff_schedule (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            staff_id   INTEGER NOT NULL,
-            work_date  TEXT NOT NULL,
-            role       TEXT NOT NULL DEFAULT '',
-            UNIQUE(staff_id, work_date),
-            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
-        )
-    """)
-
-    # Add notes column to reservations if it doesn't exist (for existing DBs)
-    try:
-        c.execute("ALTER TABLE reservations ADD COLUMN notes TEXT")
-    except Exception:
-        pass  # Column already exists
-
     # Seed accommodation data if empty
     c.execute("SELECT COUNT(*) FROM accommodations")
     if c.fetchone()[0] == 0:
         rooms = [
-            ("Room 1",  "lodge_room", "Upper",  "1 Queen + 1 Twin",                       3,  "Ocean view, ensuite",              1),
-            ("Room 2",  "lodge_room", "Upper",  "1 Queen + 1 Twin",                       3,  "Ensuite",                          2),
-            ("Room 3",  "lodge_room", "Upper",  "2 Twins",                                2,  "Ensuite",                          3),
-            ("Room 4",  "lodge_room", "Upper",  "2 Twins",                                2,  "Ensuite",                          4),
-            ("Room 5",  "lodge_room", "Upper",  "1 Double + 1 Twin",                      3,  "Ocean view, ensuite",              5),
-            ("Room 6",  "lodge_room", "Main",   "1 Queen + 1 Twin",                       3,  "Ensuite, off kitchen",             6),
-            ("Room 7",  "lodge_room", "Ground", "2 Twins + 1 Double + pullout couch",     4,  "Under deck, private entrance",     7),
-            ("Room 8",  "lodge_room", "Ground", "2 Twins + 1 Queen",                      4,  "Under deck, private entrance",     8),
-            ("Room 9",  "lodge_room", "Ground", "2 Twins + 1 Queen",                      4,  "Under deck, private entrance",     9),
-            ("Room 10", "lodge_room", "Ground", "1 Queen + twin bunkbed",                 4,  "Back of lodge, private entrance", 10),
-            ("Creekside Cabin",   "cabin", None, "3 rooms / 5 beds",        8,  "Full kitchen, BBQ, 2 bathrooms",  11),
-            ("Forest View Cabin", "cabin", None, "4 bedrooms / 4 ensuites", 10, "Full kitchen, BBQ",               12),
-            ("Boat Shop Suite",   "suite", None, "3 beds / 1 bathroom",     4,  "Full kitchen, BBQ, above workshop", 13),
-            ("MB1",                "charter_boat", None, None, 4, "McKay Bay charter boat 1", 14),
-            ("MB2",                "charter_boat", None, None, 4, "McKay Bay charter boat 2", 15),
-            ("Contractor Boat #1", "contractor_boat", None, None, 4, "Contractor charter boat", 16),
-            ("Contractor Boat #2", "contractor_boat", None, None, 4, "Contractor charter boat", 17),
-            ("Contractor Boat #3", "contractor_boat", None, None, 4, "Contractor charter boat", 18),
+            ("Room 1",  "lodge_room", "Upper",  "1 Queen + 1 Twin",                       None, "Ocean view, ensuite",              1),
+            ("Room 2",  "lodge_room", "Upper",  "1 Queen + 1 Twin",                       None, "Ensuite",                          2),
+            ("Room 3",  "lodge_room", "Upper",  "2 Twins",                                None, "Ensuite",                          3),
+            ("Room 4",  "lodge_room", "Upper",  "2 Twins",                                None, "Ensuite",                          4),
+            ("Room 5",  "lodge_room", "Upper",  "1 Double + 1 Twin",                      None, "Ocean view, ensuite",              5),
+            ("Room 6",  "lodge_room", "Main",   "1 Queen + 1 Twin",                       None, "Ensuite, off kitchen",             6),
+            ("Room 7",  "lodge_room", "Ground", "2 Twins + 1 Double + pullout couch",     None, "Under deck, private entrance",     7),
+            ("Room 8",  "lodge_room", "Ground", "2 Twins + 1 Queen",                      None, "Under deck, private entrance",     8),
+            ("Room 9",  "lodge_room", "Ground", "2 Twins + 1 Queen",                      None, "Under deck, private entrance",     9),
+            ("Room 10", "lodge_room", "Ground", "1 Queen + twin bunkbed",                 None, "Back of lodge, private entrance", 10),
+            ("Creekside Cabin",   "cabin", None, "3 rooms / 5 beds",        None, "Full kitchen, BBQ, 2 bathrooms",  11),
+            ("Forest View Cabin", "cabin", None, "4 bedrooms / 4 ensuites", None, "Full kitchen, BBQ",               12),
+            ("Boat Shop Suite",   "suite", None, "3 beds / 1 bathroom",     None, "Full kitchen, BBQ, above workshop", 13),
         ]
         c.executemany(
             "INSERT INTO accommodations (name,type,floor,bed_config,max_occupancy,features,sort_order) VALUES (?,?,?,?,?,?,?)",
             rooms
         )
-    else:
-        # Add charter boats if they don't exist yet (for existing databases)
-        existing = [r[0] for r in c.execute("SELECT name FROM accommodations").fetchall()]
-        new_boats = [
-            ("MB1",                "charter_boat",    None, None, 4, "McKay Bay charter boat 1", 14),
-            ("MB2",                "charter_boat",    None, None, 4, "McKay Bay charter boat 2", 15),
-            ("Contractor Boat #1", "contractor_boat", None, None, 4, "Contractor charter boat",  16),
-            ("Contractor Boat #2", "contractor_boat", None, None, 4, "Contractor charter boat",  17),
-            ("Contractor Boat #3", "contractor_boat", None, None, 4, "Contractor charter boat",  18),
-        ]
-        for boat in new_boats:
-            if boat[0] not in existing:
-                c.execute(
-                    "INSERT INTO accommodations (name,type,floor,bed_config,max_occupancy,features,sort_order) VALUES (?,?,?,?,?,?,?)",
-                    boat
-                )
-        # Update max_occupancy for existing rooms if still NULL
-        occupancy = [
-            (3,  "Room 1"),  (3,  "Room 2"),  (2,  "Room 3"),  (2,  "Room 4"),
-            (3,  "Room 5"),  (3,  "Room 6"),  (4,  "Room 7"),  (4,  "Room 8"),
-            (4,  "Room 9"),  (4,  "Room 10"), (8,  "Creekside Cabin"),
-            (10, "Forest View Cabin"), (4, "Boat Shop Suite"),
-        ]
-        for occ, name in occupancy:
-            c.execute("UPDATE accommodations SET max_occupancy=? WHERE name=? AND max_occupancy IS NULL", (occ, name))
+
+    # Migrations — add new columns to existing databases safely
+    migrations = [
+        "ALTER TABLE reservations ADD COLUMN notes TEXT",
+        "ALTER TABLE reservations ADD COLUMN mobility TEXT",
+        "ALTER TABLE reservations ADD COLUMN cc_on_file INTEGER NOT NULL DEFAULT 0",
+    ]
+    for sql in migrations:
+        try:
+            c.execute(sql)
+        except Exception:
+            pass  # Column already exists
 
     conn.commit()
     conn.close()
