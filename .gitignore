@@ -1,0 +1,19 @@
+# Database — never commit the live database to GitHub.
+# Railway keeps the DB on its persistent volume; committing it
+# would overwrite guest data on every redeploy.
+mckaybay/mckaybay.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

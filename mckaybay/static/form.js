@@ -4,10 +4,11 @@
 
 const Form = (() => {
 
-  let accommodations = [];
-  let currentRes     = null;   // null = new, object = editing
-  let presetDate     = null;
-  let presetAccom    = null;
+  let accommodations    = [];
+  let currentRes        = null;   // null = new, object = editing
+  let presetDate        = null;
+  let presetAccom       = null;
+  let guestSearchTimer  = null;
 
   // Rooms, dietary, boats, charters are stored as arrays and rendered dynamically
   let rooms     = [];
@@ -26,7 +27,8 @@ const Form = (() => {
     // Default one room
     rooms = [{
       accommodation_id: accomId || (accommodations[0] && accommodations[0].id),
-      num_guests: 2, meal_package: true, extra_boats: 0, single_supplement: false
+      num_guests: 2, meal_package: true, extra_boats: 0,
+      single_supplement: false, custom_rate: null,
     }];
     dietary  = [];
     boats    = [];
@@ -41,11 +43,12 @@ const Form = (() => {
     currentRes = res;
 
     rooms = res.rooms.map(r => ({
-      accommodation_id: r.accommodation_id,
-      num_guests: r.num_guests,
-      meal_package: !!r.meal_package,
-      extra_boats: r.extra_boats || 0,
+      accommodation_id:  r.accommodation_id,
+      num_guests:        r.num_guests,
+      meal_package:      !!r.meal_package,
+      extra_boats:       r.extra_boats || 0,
       single_supplement: !!r.single_supplement,
+      custom_rate:       r.custom_rate != null ? r.custom_rate : null,
     }));
     dietary  = res.dietary.map(d => ({...d}));
     boats    = res.boats.map(b => ({...b}));
@@ -57,7 +60,7 @@ const Form = (() => {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   function render() {
-    const res  = currentRes;
+    const res   = currentRes;
     const isNew = !res;
     const title = isNew ? "New Reservation" : `Edit Reservation — ${res.first_name} ${res.last_name}`;
 
@@ -72,14 +75,23 @@ const Form = (() => {
         <!-- Guest -->
         <div class="mb-5 p-4 bg-blue-50 rounded-lg">
           <h3 class="font-semibold text-blue-900 mb-3">👤 Primary Contact</h3>
+          ${isNew ? `<p class="text-xs text-blue-600 mb-2">Start typing a name to find a returning guest, or fill in new guest details below.</p>` : ""}
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label>First Name *</label>
-              <input id="f-first" value="${esc(res?.first_name||"")}" placeholder="First name" />
+              <input id="f-first" value="${esc(res?.first_name||"")}" placeholder="First name"
+                oninput="Form.searchGuests()" />
             </div>
-            <div>
+            <div style="position:relative">
               <label>Last Name *</label>
-              <input id="f-last" value="${esc(res?.last_name||"")}" placeholder="Last name" />
+              <input id="f-last" value="${esc(res?.last_name||"")}" placeholder="Last name"
+                oninput="Form.searchGuests()"
+                onblur="Form.hideGuestSuggestions()" />
+              <div id="guest-suggestions"
+                style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;
+                       background:white;border:1px solid #d1d5db;border-radius:6px;
+                       box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:210px;overflow-y:auto"
+                onmousedown="event.preventDefault()"></div>
             </div>
             <div>
               <label>Phone</label>
@@ -116,9 +128,9 @@ const Form = (() => {
               <label>Arrival Method</label>
               <select id="f-arrmethod">
                 <option value="">— Select —</option>
-                <option value="boat"       ${res?.arrival_method==="boat"      ?"selected":""}>Boat</option>
-                <option value="road"       ${res?.arrival_method==="road"      ?"selected":""}>Road</option>
-                <option value="float_plane"${res?.arrival_method==="float_plane"?"selected":""}>Float Plane</option>
+                <option value="boat"        ${res?.arrival_method==="boat"       ?"selected":""}>Boat</option>
+                <option value="road"        ${res?.arrival_method==="road"       ?"selected":""}>Road</option>
+                <option value="float_plane" ${res?.arrival_method==="float_plane"?"selected":""}>Float Plane</option>
               </select>
             </div>
             <div>
@@ -135,6 +147,17 @@ const Form = (() => {
                 <option value="cancelled"  ${res?.status==="cancelled"  ?"selected":""}>Cancelled</option>
               </select>
             </div>
+          </div>
+          <!-- Flags row -->
+          <div class="mt-3 flex flex-wrap items-center gap-5">
+            <label class="flex items-center gap-2 cursor-pointer" style="margin:0">
+              <input type="checkbox" id="f-cc-on-file" ${res?.cc_on_file?"checked":""} style="width:auto" />
+              <span class="text-sm font-medium">💳 Credit card on file</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer" style="margin:0">
+              <input type="checkbox" id="f-pst-exempt" ${res?.pst_exempt?"checked":""} style="width:auto" />
+              <span class="text-sm font-medium">🏷 PST exempt</span>
+            </label>
           </div>
         </div>
 
@@ -183,15 +206,14 @@ const Form = (() => {
           <textarea id="f-special" rows="2" placeholder="Occasions, accessibility needs, etc.">${esc(res?.special_requests||"")}</textarea>
         </div>
 
-        <!-- Quote (edit mode only) -->
-        ${!isNew && res?.id ? `
+        <!-- Quote (always shown) -->
         <div class="mb-5 p-4 bg-gray-50 rounded-lg">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold text-gray-800">💰 Estimated Total</h3>
-            <button class="btn btn-secondary text-xs py-1" onclick="Form.loadQuote(${res.id})">Calculate</button>
+            <button class="btn btn-secondary text-xs py-1" onclick="Form.loadQuote()">Calculate</button>
           </div>
-          <div id="quote-result" class="mt-2 text-sm text-gray-500">Click Calculate to get a price estimate.</div>
-        </div>` : ""}
+          <div id="quote-result" class="mt-2 text-sm text-gray-500">Fill in dates &amp; rooms, then click Calculate for a price estimate.</div>
+        </div>
 
         <!-- Action buttons -->
         <div class="flex items-center gap-3 justify-between pt-4 border-t">
@@ -215,21 +237,30 @@ const Form = (() => {
       const accomOptions = accommodations.map(a =>
         `<option value="${a.id}" ${a.id===r.accommodation_id?"selected":""}>${a.name}</option>`
       ).join("");
+      const customRateVal = r.custom_rate != null ? r.custom_rate : "";
+      const ratePlaceholder = r.meal_package ? "e.g. 235" : "e.g. 150";
+      const rateLabel = r.meal_package ? "Custom meal rate ($/person·night)" : "Custom no-meals rate ($/night)";
       return `
       <div class="flex flex-wrap items-end gap-2 mb-3 p-3 bg-white rounded-lg border border-purple-100">
         <div style="min-width:160px;flex:2">
           <label>Room / Unit</label>
           <select onchange="Form.updateRoom(${i},'accommodation_id',+this.value)">${accomOptions}</select>
         </div>
-        <div style="min-width:80px;flex:1">
+        <div style="min-width:70px;flex:1">
           <label>Guests</label>
           <input type="number" min="1" value="${r.num_guests}"
             onchange="Form.updateRoom(${i},'num_guests',+this.value)" />
         </div>
-        <div style="min-width:110px;flex:1">
+        <div style="min-width:90px;flex:1">
           <label>Extra Boats</label>
           <input type="number" min="0" value="${r.extra_boats}"
             onchange="Form.updateRoom(${i},'extra_boats',+this.value)" />
+        </div>
+        <div style="min-width:120px;flex:1">
+          <label>${rateLabel}</label>
+          <input type="number" min="0" step="0.01" value="${customRateVal}"
+            placeholder="${ratePlaceholder}"
+            oninput="Form.updateRoom(${i},'custom_rate',this.value===''?null:+this.value)" />
         </div>
         <div class="flex items-center gap-3 pb-1">
           <label class="flex items-center gap-1 cursor-pointer" style="margin:0">
@@ -240,7 +271,7 @@ const Form = (() => {
           <label class="flex items-center gap-1 cursor-pointer" style="margin:0">
             <input type="checkbox" ${r.single_supplement?"checked":""} style="width:auto"
               onchange="Form.updateRoom(${i},'single_supplement',this.checked)" />
-            <span class="text-sm">Solo rate</span>
+            <span class="text-sm">No meals rate</span>
           </label>
           <button class="text-red-400 hover:text-red-600 text-lg" onclick="Form.removeRoom(${i})">✕</button>
         </div>
@@ -303,12 +334,15 @@ const Form = (() => {
 
   // ── Mutators (called from inline onchange handlers) ──────────────────────────
 
-  function updateRoom(i, field, val)     { rooms[i][field]    = val; refreshSection("rooms-list",    renderRoomsList); }
+  function updateRoom(i, field, val) {
+    rooms[i][field] = val;
+    refreshSection("rooms-list", renderRoomsList);
+  }
   function updateDietary(i, field, val)  { dietary[i][field]  = val; }
   function updateBoat(i, field, val)     { boats[i][field]    = val; }
   function updateCharter(i, field, val)  { charters[i][field] = val; }
 
-  function addRoom()    { rooms.push({accommodation_id: accommodations[0]?.id, num_guests:2, meal_package:true, extra_boats:0, single_supplement:false}); refreshSection("rooms-list", renderRoomsList); }
+  function addRoom()    { rooms.push({accommodation_id: accommodations[0]?.id, num_guests:2, meal_package:true, extra_boats:0, single_supplement:false, custom_rate:null}); refreshSection("rooms-list", renderRoomsList); }
   function removeRoom(i){ rooms.splice(i,1);    refreshSection("rooms-list",    renderRoomsList); }
   function addDietary() { dietary.push({guest_desc:"",requirement:""}); refreshSection("dietary-list", renderDietaryList); }
   function removeDietary(i){ dietary.splice(i,1); refreshSection("dietary-list", renderDietaryList); }
@@ -322,36 +356,106 @@ const Form = (() => {
     if (el) el.innerHTML = renderFn();
   }
 
+  // ── Guest autocomplete ────────────────────────────────────────────────────────
+
+  function searchGuests() {
+    clearTimeout(guestSearchTimer);
+    const first = (document.getElementById("f-first")?.value || "").trim();
+    const last  = (document.getElementById("f-last")?.value  || "").trim();
+    const q = (first + " " + last).trim();
+    if (q.length < 2) { hideGuestSuggestions(); return; }
+    guestSearchTimer = setTimeout(async () => {
+      try {
+        const results = await API.guests(q);
+        showGuestSuggestions(results);
+      } catch(e) { /* silent */ }
+    }, 280);
+  }
+
+  function showGuestSuggestions(guests) {
+    const el = document.getElementById("guest-suggestions");
+    if (!el) return;
+    if (!guests || !guests.length) { el.style.display = "none"; return; }
+    el.innerHTML = guests.slice(0, 8).map(g => `
+      <div onclick="Form.selectGuest(${JSON.stringify(g).replace(/"/g,"&quot;")})"
+        style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:13px"
+        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
+        <span style="font-weight:600">${esc(g.first_name)} ${esc(g.last_name)}</span>
+        ${g.is_returning ? `<span style="color:#d97706;margin-left:4px">⭐</span>` : ""}
+        ${g.phone ? `<span style="color:#9ca3af;margin-left:8px;font-size:12px">${esc(g.phone)}</span>` : ""}
+        ${g.email ? `<span style="color:#9ca3af;margin-left:8px;font-size:12px">${esc(g.email)}</span>` : ""}
+      </div>`).join("");
+    el.style.display = "block";
+  }
+
+  function hideGuestSuggestions(delayMs) {
+    if (delayMs) {
+      setTimeout(() => {
+        const el = document.getElementById("guest-suggestions");
+        if (el) el.style.display = "none";
+      }, delayMs);
+    } else {
+      const el = document.getElementById("guest-suggestions");
+      if (el) el.style.display = "none";
+    }
+  }
+
+  function selectGuest(g) {
+    if (typeof g === "string") g = JSON.parse(g);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ""; };
+    set("f-first", g.first_name);
+    set("f-last",  g.last_name);
+    set("f-phone", g.phone);
+    set("f-email", g.email);
+    const ret = document.getElementById("f-returning");
+    if (ret) ret.checked = !!g.is_returning;
+    hideGuestSuggestions();
+    if (currentRes === null) currentRes = {};
+    currentRes._linked_guest_id = g.id;
+  }
+
   // ── Quote ────────────────────────────────────────────────────────────────────
 
-  async function loadQuote(resId) {
+  async function loadQuote() {
     const el = document.getElementById("quote-result");
     if (!el) return;
     el.textContent = "Calculating…";
     try {
-      const q = await API.quote(resId);
-      let html = `<table class="w-full text-sm mt-1"><thead><tr class="border-b text-gray-500">
+      const data = readForm();
+      const q = await API.quotePreview(data);
+      renderQuote(el, q);
+    } catch(e) {
+      el.textContent = "Error calculating quote: " + (e.message || "check dates and rooms.");
+    }
+  }
+
+  function renderQuote(el, q) {
+    if (!q || !q.lines) { el.textContent = "Could not calculate quote."; return; }
+    let html = `<table class="w-full text-sm mt-1">
+      <thead><tr class="border-b text-gray-500">
         <th class="text-left py-1">Description</th>
         <th class="text-right py-1">Subtotal</th>
         <th class="text-right py-1">Tax</th>
-        <th class="text-right py-1">Total</th></tr></thead><tbody>`;
-      q.lines.forEach(l => {
-        html += `<tr class="border-b border-gray-100">
-          <td class="py-1">${l.description}</td>
-          <td class="text-right py-1">$${l.subtotal.toFixed(2)}</td>
-          <td class="text-right py-1">$${l.tax.toFixed(2)}</td>
-          <td class="text-right font-medium py-1">$${l.total.toFixed(2)}</td></tr>`;
-      });
-      html += `</tbody><tfoot><tr class="font-bold text-base">
-        <td class="pt-2">TOTAL (${q.nights} nights)</td>
-        <td class="text-right pt-2">$${q.subtotal.toFixed(2)}</td>
-        <td class="text-right pt-2">$${q.tax.toFixed(2)}</td>
-        <td class="text-right pt-2 text-green-700">$${q.grand_total.toFixed(2)}</td>
-        </tr></tfoot></table>`;
-      el.innerHTML = html;
-    } catch(e) {
-      el.textContent = "Error calculating quote.";
+        <th class="text-right py-1">Total</th>
+      </tr></thead><tbody>`;
+    q.lines.forEach(l => {
+      html += `<tr class="border-b border-gray-100">
+        <td class="py-1">${l.description}</td>
+        <td class="text-right py-1">$${(l.subtotal||0).toFixed(2)}</td>
+        <td class="text-right py-1">$${(l.tax||0).toFixed(2)}</td>
+        <td class="text-right font-medium py-1">$${(l.total||0).toFixed(2)}</td>
+      </tr>`;
+    });
+    html += `</tbody><tfoot><tr class="font-bold text-base">
+      <td class="pt-2">TOTAL (${q.nights} night${q.nights!==1?"s":""})</td>
+      <td class="text-right pt-2">$${(q.subtotal||0).toFixed(2)}</td>
+      <td class="text-right pt-2">$${(q.tax||0).toFixed(2)}</td>
+      <td class="text-right pt-2 text-green-700">$${(q.grand_total||0).toFixed(2)}</td>
+    </tr></tfoot></table>`;
+    if (q.pst_exempt) {
+      html += `<p class="text-xs text-blue-600 mt-1">PST exempt applied — GST only on self-contained units.</p>`;
     }
+    el.innerHTML = html;
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────────
@@ -359,20 +463,22 @@ const Form = (() => {
   function readForm() {
     return {
       guest: {
-        first_name:   document.getElementById("f-first").value.trim(),
-        last_name:    document.getElementById("f-last").value.trim(),
-        phone:        document.getElementById("f-phone").value.trim(),
-        email:        document.getElementById("f-email").value.trim(),
-        is_returning: document.getElementById("f-returning").checked ? 1 : 0,
+        first_name:   document.getElementById("f-first")?.value.trim() || "",
+        last_name:    document.getElementById("f-last")?.value.trim()  || "",
+        phone:        document.getElementById("f-phone")?.value.trim() || "",
+        email:        document.getElementById("f-email")?.value.trim() || "",
+        is_returning: document.getElementById("f-returning")?.checked ? 1 : 0,
       },
-      guest_id:        currentRes?.guest_id || null,
-      status:          document.getElementById("f-status").value,
-      arrival_date:    document.getElementById("f-arrival").value,
-      departure_date:  document.getElementById("f-departure").value,
-      arrival_time:    document.getElementById("f-arrtime").value.trim(),
-      arrival_method:  document.getElementById("f-arrmethod").value || null,
-      num_guests:      parseInt(document.getElementById("f-numguests").value) || 1,
-      special_requests:document.getElementById("f-special").value.trim(),
+      guest_id:         currentRes?._linked_guest_id || currentRes?.guest_id || null,
+      status:           document.getElementById("f-status")?.value || "confirmed",
+      arrival_date:     document.getElementById("f-arrival")?.value || "",
+      departure_date:   document.getElementById("f-departure")?.value || "",
+      arrival_time:     document.getElementById("f-arrtime")?.value.trim() || "",
+      arrival_method:   document.getElementById("f-arrmethod")?.value || null,
+      num_guests:       parseInt(document.getElementById("f-numguests")?.value) || 1,
+      special_requests: document.getElementById("f-special")?.value.trim() || "",
+      cc_on_file:       document.getElementById("f-cc-on-file")?.checked ? 1 : 0,
+      pst_exempt:       document.getElementById("f-pst-exempt")?.checked ? 1 : 0,
       rooms, dietary, boats, charters,
     };
   }
@@ -380,7 +486,6 @@ const Form = (() => {
   async function save() {
     const data = readForm();
 
-    // Basic validation
     if (!data.guest.first_name || !data.guest.last_name) {
       return alert("Please enter the guest's first and last name.");
     }
@@ -394,20 +499,19 @@ const Form = (() => {
       return alert("Please add at least one room.");
     }
 
-    // If editing, keep guest_id
-    if (currentRes) {
+    const isActualEdit = currentRes && currentRes.id;
+    if (isActualEdit) {
       data.guest_id = currentRes.guest_id;
     }
 
     try {
       let result;
-      if (currentRes) {
+      if (isActualEdit) {
         result = await API.updateReservation(currentRes.id, data);
       } else {
         result = await API.createReservation(data);
       }
 
-      // 409 conflict = overbooking
       if (result && result.conflicts) {
         const msgs = result.conflicts.map(c =>
           `• ${c.room}: already booked by ${c.guest} (${c.dates})`
@@ -446,6 +550,7 @@ const Form = (() => {
     addDietary, removeDietary, updateDietary,
     addBoat, removeBoat, updateBoat,
     addCharter, removeCharter, updateCharter,
+    searchGuests, showGuestSuggestions, hideGuestSuggestions, selectGuest,
     loadQuote, save, deleteRes,
   };
 })();

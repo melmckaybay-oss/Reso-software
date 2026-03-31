@@ -24,7 +24,7 @@ CHARTER_RATES = {
 EXTRA_BOAT  = 25.00
 GST         = 0.05
 HOTEL_TAX   = 0.048   # meal-package stays
-PST         = 0.08    # self-contained stays
+PST         = 0.08    # self-contained stays (waived if pst_exempt=True)
 
 
 def _is_summer(d: date) -> bool:
@@ -47,7 +47,25 @@ def _season_nights(arrival: date, departure: date) -> dict:
     return {"summer": s, "offseason": o}
 
 
-def calc_quote(rooms: list, arrival: str, departure: str, charters: list = None) -> dict:
+def calc_quote(
+    rooms: list,
+    arrival: str,
+    departure: str,
+    charters: list = None,
+    pst_exempt: bool = False,
+) -> dict:
+    """
+    Calculate a price quote.
+
+    Per-room custom_rate override:
+      - If meal_package is True:  custom_rate replaces the per-person/night meal rate.
+      - If meal_package is False: custom_rate replaces the flat nightly cabin/suite rate
+                                  (applied as a fixed rate for both summer and off-season).
+
+    pst_exempt:
+      - When True, self-contained (no meal package) rooms are taxed at GST only
+        instead of GST + PST.  Meal-package rooms are unaffected (they use Hotel Tax).
+    """
     arr = date.fromisoformat(arrival)
     dep = date.fromisoformat(departure)
     sn  = _season_nights(arr, dep)
@@ -58,31 +76,49 @@ def calc_quote(rooms: list, arrival: str, departure: str, charters: list = None)
     tax_total  = 0.0
 
     for room in rooms:
-        name  = room.get("accommodation_name", "")
-        atype = room.get("accommodation_type", "lodge_room")
-        ng    = int(room.get("num_guests", 1))
-        mp    = bool(room.get("meal_package", True))
-        extra = int(room.get("extra_boats", 0))
-        solo  = bool(room.get("single_supplement", False))
+        name        = room.get("accommodation_name", "")
+        atype       = room.get("accommodation_type", "lodge_room")
+        ng          = int(room.get("num_guests", 1))
+        mp          = bool(room.get("meal_package", True))
+        extra       = int(room.get("extra_boats", 0))
+        solo        = bool(room.get("single_supplement", False))
+        custom_rate = room.get("custom_rate")  # None means use defaults
 
         if atype == "lodge_room" or mp:
-            rs = SINGLE_SUPPL if solo else MEAL_SUMMER
-            ro = SINGLE_SUPPL if solo else MEAL_OFFSEASON
-            sub = ng * (sn["summer"] * rs + sn["offseason"] * ro)
+            # Meal-package pricing (per person per night)
+            if custom_rate is not None:
+                sub = ng * total_nights * float(custom_rate)
+                label = f"{name} — {ng} guest{'s' if ng!=1 else ''} × meal pkg @ ${custom_rate:.2f}/person·night"
+            else:
+                rs = SINGLE_SUPPL if solo else MEAL_SUMMER
+                ro = SINGLE_SUPPL if solo else MEAL_OFFSEASON
+                sub = ng * (sn["summer"] * rs + sn["offseason"] * ro)
+                label = f"{name} — {ng} guest{'s' if ng!=1 else ''} × meal package"
             tax = sub * (GST + HOTEL_TAX)
-            label = f"{name} — {ng} guest{'s' if ng!=1 else ''} × meal package"
+
         else:
-            rates = CABIN_RATES.get(name, {"summer": 0, "offseason": 0})
-            sub   = sn["summer"] * rates["summer"] + sn["offseason"] * rates["offseason"]
-            tax   = sub * (GST + PST)
-            label = f"{name} — self-contained"
+            # Self-contained / no-meals pricing (flat per night)
+            if custom_rate is not None:
+                sub   = total_nights * float(custom_rate)
+                label = f"{name} — self-contained @ ${custom_rate:.2f}/night"
+            else:
+                rates = CABIN_RATES.get(name, {"summer": 0, "offseason": 0})
+                sub   = sn["summer"] * rates["summer"] + sn["offseason"] * rates["offseason"]
+                label = f"{name} — self-contained"
+            # PST exempt guests pay GST only; otherwise GST + PST
+            tax_rate = GST if pst_exempt else (GST + PST)
+            tax      = sub * tax_rate
 
         if extra:
             sub   += extra * total_nights * EXTRA_BOAT
             label += f" + {extra} extra boat{'s' if extra!=1 else ''}"
 
-        lines.append({"description": label, "subtotal": round(sub, 2), "tax": round(tax, 2),
-                       "total": round(sub + tax, 2)})
+        lines.append({
+            "description": label,
+            "subtotal":    round(sub, 2),
+            "tax":         round(tax, 2),
+            "total":       round(sub + tax, 2),
+        })
         subtotal  += sub
         tax_total += tax
 
@@ -93,13 +129,19 @@ def calc_quote(rooms: list, arrival: str, departure: str, charters: list = None)
             rate  = CHARTER_RATES["fishing"][dur]
             tax   = rate * GST
             label = f"Fishing charter — {dur.replace('_', ' ')} ({ch.get('charter_date','')})"
-            lines.append({"description": label, "subtotal": round(rate, 2),
-                           "tax": round(tax, 2), "total": round(rate + tax, 2)})
+            lines.append({
+                "description": label,
+                "subtotal":    round(rate, 2),
+                "tax":         round(tax, 2),
+                "total":       round(rate + tax, 2),
+            })
             subtotal  += rate
             tax_total += tax
         else:
-            lines.append({"description": f"Wildlife charter ({ch.get('charter_date','')}) — contact for pricing",
-                           "subtotal": 0, "tax": 0, "total": 0})
+            lines.append({
+                "description": f"Wildlife charter ({ch.get('charter_date','')}) — contact for pricing",
+                "subtotal": 0, "tax": 0, "total": 0,
+            })
 
     grand = subtotal + tax_total
     return {
@@ -110,4 +152,5 @@ def calc_quote(rooms: list, arrival: str, departure: str, charters: list = None)
         "subtotal":         round(subtotal, 2),
         "tax":              round(tax_total, 2),
         "grand_total":      round(grand, 2),
+        "pst_exempt":       pst_exempt,
     }
