@@ -243,12 +243,13 @@ def handle_reservations(handler, method, path_parts, qs, body):
 
         cur = db.execute(
             """INSERT INTO reservations
-               (guest_id,status,arrival_date,departure_date,arrival_time,arrival_method,num_guests,special_requests,how_heard)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+               (guest_id,status,arrival_date,departure_date,arrival_time,arrival_method,num_guests,special_requests,mobility,cc_on_file,how_heard)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (guest_id, d.get("status", "confirmed"),
              d["arrival_date"], d["departure_date"],
              d.get("arrival_time"), d.get("arrival_method"),
-             d.get("num_guests", 1), d.get("special_requests"), d.get("how_heard"))
+             d.get("num_guests", 1), d.get("special_requests"),
+             d.get("mobility"), d.get("cc_on_file", 0), d.get("how_heard"))
         )
         rid = cur.lastrowid
         _save_reservation_children(db, rid, d)
@@ -273,10 +274,11 @@ def handle_reservations(handler, method, path_parts, qs, body):
 
         db.execute(
             """UPDATE reservations SET status=?,arrival_date=?,departure_date=?,arrival_time=?,
-               arrival_method=?,num_guests=?,special_requests=?,how_heard=? WHERE id=?""",
+               arrival_method=?,num_guests=?,special_requests=?,mobility=?,cc_on_file=?,how_heard=? WHERE id=?""",
             (d.get("status", "confirmed"), d["arrival_date"], d["departure_date"],
              d.get("arrival_time"), d.get("arrival_method"),
-             d.get("num_guests", 1), d.get("special_requests"), d.get("how_heard"), rid)
+             d.get("num_guests", 1), d.get("special_requests"),
+             d.get("mobility"), d.get("cc_on_file", 0), d.get("how_heard"), rid)
         )
         _save_reservation_children(db, rid, d)
         db.commit()
