@@ -148,6 +148,22 @@ def init_db():
         except Exception:
             pass  # Column already exists
 
+    # Always ensure charter boats exist (insert if missing)
+    existing_names = [r[0] for r in c.execute("SELECT name FROM accommodations").fetchall()]
+    charter_boats = [
+        ("MB1",                "charter_boat",    None, None, 4, "McKay Bay charter boat 1", 14),
+        ("MB2",                "charter_boat",    None, None, 4, "McKay Bay charter boat 2", 15),
+        ("Contractor Boat #1", "contractor_boat", None, None, 4, "Contractor charter boat",  16),
+        ("Contractor Boat #2", "contractor_boat", None, None, 4, "Contractor charter boat",  17),
+        ("Contractor Boat #3", "contractor_boat", None, None, 4, "Contractor charter boat",  18),
+    ]
+    for boat in charter_boats:
+        if boat[0] not in existing_names:
+            c.execute(
+                "INSERT INTO accommodations (name,type,floor,bed_config,max_occupancy,features,sort_order) VALUES (?,?,?,?,?,?,?)",
+                boat
+            )
+
     conn.commit()
     conn.close()
 
