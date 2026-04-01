@@ -547,6 +547,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    # Ensure the data directory exists (for Railway persistent volume)
+    import os as _os
+    _db_dir = _os.path.dirname(_os.environ.get("DB_PATH", "/app/data/mckaybay.db"))
+    if _db_dir:
+        _os.makedirs(_db_dir, exist_ok=True)
     init_db()
     print(f"\n🏔  McKay Bay Lodge — Reservation Software")
     print(f"   Running at http://localhost:{PORT}")
