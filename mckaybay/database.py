@@ -113,6 +113,32 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS daily_notes (
+            date  TEXT PRIMARY KEY,
+            notes TEXT NOT NULL DEFAULT ''
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS staff (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS staff_schedule (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_id   INTEGER NOT NULL,
+            work_date  TEXT NOT NULL,
+            role       TEXT NOT NULL DEFAULT '',
+            UNIQUE(staff_id, work_date),
+            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+        )
+    """)
+
     # Seed accommodation data if empty
     c.execute("SELECT COUNT(*) FROM accommodations")
     if c.fetchone()[0] == 0:
