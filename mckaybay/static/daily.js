@@ -199,3 +199,4 @@ const Daily = (() => {
   }
 
   return { render, changeDate, saveNotes };
+})();

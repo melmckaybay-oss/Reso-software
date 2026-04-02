@@ -98,14 +98,16 @@ const Staff = (() => {
         const isToday = iso === todayIso;
         return `<div style="min-width:${CELL_W}px;width:${CELL_W}px;height:44px;border-right:1px solid #e5e7eb;
                   border-bottom:1px solid #e5e7eb;flex-shrink:0;padding:2px;
-                  background:${isToday ? "#fefce8" : "white"};">
+                  background:${isToday ? "#fefce8" : "white"};"
+                  onmouseenter="Staff.showCellTooltip(event,'${s.name}','${iso}','${(role||"").replace(/'/g,"&#39;")}')"
+                  onmouseleave="Staff.hideTooltip()">
           <input type="text" value="${role}"
             data-staff="${s.id}" data-date="${iso}"
             placeholder="Role / time"
             style="width:100%;height:100%;border:none;border-radius:4px;padding:3px 6px;font-size:12px;
                    background:${bg};cursor:text;box-shadow:none;outline:none;"
             onchange="Staff.saveCell(this)"
-            onfocus="this.style.outline='2px solid #3b82f6';this.style.background='white';"
+            onfocus="this.style.outline='2px solid #3b82f6';this.style.background='white';Staff.hideTooltip();"
             onblur="Staff.refreshCell(this,'${role}')" />
         </div>`;
       }).join("");
@@ -225,6 +227,37 @@ const Staff = (() => {
     } catch(e) { alert("Could not remove staff: " + e.message); }
   }
 
+  function showCellTooltip(event, staffName, date, role) {
+    if (!role) return;
+    const tt = document.getElementById("tooltip");
+    if (!tt) return;
+    const d = new Date(date + "T12:00:00");
+    const dayLabel = d.toLocaleDateString("en-CA", { weekday: "long", month: "short", day: "numeric" });
+    tt.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px;font-size:13px">👤 ${staffName}</div>
+      <div style="opacity:0.8;font-size:11px;margin-bottom:6px">📅 ${dayLabel}</div>
+      <div style="font-size:13px;white-space:pre-wrap">${role}</div>
+      <div style="margin-top:6px;opacity:0.5;font-size:10px">Click cell to edit</div>`;
+    tt.classList.remove("hidden");
+    moveTT(event);
+    document.addEventListener("mousemove", moveTT);
+  }
+
+  function moveTT(e) {
+    const tt = document.getElementById("tooltip");
+    if (!tt || tt.classList.contains("hidden")) return;
+    const x = e.clientX + 16, y = e.clientY + 16;
+    const w = tt.offsetWidth || 200, h = tt.offsetHeight || 80;
+    tt.style.left = (x + w > window.innerWidth  ? x - w - 32 : x) + "px";
+    tt.style.top  = (y + h > window.innerHeight ? y - h - 32 : y) + "px";
+  }
+
+  function hideTooltip() {
+    const tt = document.getElementById("tooltip");
+    if (tt) tt.classList.add("hidden");
+    document.removeEventListener("mousemove", moveTT);
+  }
+
   function navigate(delta) {
     viewStart = addDays(viewStart, delta);
     loadSchedule().then(() => buildUI(document.getElementById("main-content")));
@@ -247,5 +280,5 @@ const Staff = (() => {
     loadSchedule().then(() => buildUI(document.getElementById("main-content")));
   }
 
-  return { render, navigate, goToToday, setViewDays, jumpToMonth, saveCell, refreshCell, addStaff, removeStaff };
+  return { render, navigate, goToToday, setViewDays, jumpToMonth, saveCell, refreshCell, addStaff, removeStaff, showCellTooltip, hideTooltip };
 })();
