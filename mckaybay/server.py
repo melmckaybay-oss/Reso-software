@@ -313,7 +313,7 @@ def handle_reservations(handler, method, path_parts, qs, body):
 
 
 def handle_daily(handler, method, path_parts, qs, body):
-    if method != "GET":
+    if method not in ("GET", "POST", "PUT"):
         return error_response(handler, "Method not allowed", 405)
     date_param = qs.get("date", [None])[0]
     if not date_param:
