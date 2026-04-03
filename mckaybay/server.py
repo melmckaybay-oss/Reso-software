@@ -368,7 +368,6 @@ def handle_daily(handler, method, path_parts, qs, body):
         return json_response(handler, {"meal_guests": rows_to_list(rows), "dietary": diets})
 
     if view == "housekeeping":
-        # Checkouts today = rooms to clean
         checkouts = db.execute(
             """SELECT a.name AS room, g.first_name, g.last_name
                FROM reservations r
@@ -406,13 +405,11 @@ def handle_daily(handler, method, path_parts, qs, body):
 def handle_staff(handler, method, path_parts, qs, body):
     db = get_db()
 
-    # GET /api/staff — list all staff
     if method == "GET" and len(path_parts) == 2:
         rows = db.execute("SELECT * FROM staff ORDER BY sort_order, name").fetchall()
         db.close()
         return json_response(handler, rows_to_list(rows))
 
-    # POST /api/staff — add staff member
     if method == "POST" and len(path_parts) == 2:
         name = body.get("name", "").strip()
         if not name:
@@ -425,7 +422,6 @@ def handle_staff(handler, method, path_parts, qs, body):
         db.close()
         return json_response(handler, row, 201)
 
-    # DELETE /api/staff/<id>
     if method == "DELETE" and len(path_parts) == 3:
         sid = int(path_parts[2])
         db.execute("DELETE FROM staff WHERE id=?", (sid,))
@@ -434,7 +430,6 @@ def handle_staff(handler, method, path_parts, qs, body):
         db.close()
         return json_response(handler, {"deleted": sid})
 
-    # GET /api/staff/schedule?start=YYYY-MM-DD&end=YYYY-MM-DD
     if method == "GET" and len(path_parts) == 3 and path_parts[2] == "schedule":
         start = qs.get("start", [None])[0]
         end   = qs.get("end",   [None])[0]
@@ -448,7 +443,6 @@ def handle_staff(handler, method, path_parts, qs, body):
         db.close()
         return json_response(handler, rows_to_list(rows))
 
-    # POST /api/staff/schedule — save a single cell (staff_id, date, role)
     if method == "POST" and len(path_parts) == 3 and path_parts[2] == "schedule":
         sid   = body.get("staff_id")
         date  = body.get("work_date")
@@ -513,8 +507,20 @@ class Handler(BaseHTTPRequestHandler):
         parsed     = urlparse(self.path)
         path       = parsed.path.rstrip("/")
         qs         = parse_qs(parsed.query)
-        path_parts = [p for p in path.split("/") if p]   # e.g. ['api','reservations','5']
+        path_parts = [p for p in path.split("/") if p]
         body       = self._read_body() if method in ("POST", "PUT", "PATCH") else {}
+
+        # Batch entry tool — serve directly before static fallback
+        if path == "/batch-entry":
+            filepath = os.path.join(STATIC_DIR, "batch_entry.html")
+            with open(filepath, "rb") as f:
+                body_bytes = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", len(body_bytes))
+            self.end_headers()
+            self.wfile.write(body_bytes)
+            return
 
         # Static files — must check /api/ (with slash) so /api.js is served as a file
         if not path.startswith("/api/") and path != "/api":
@@ -528,7 +534,6 @@ class Handler(BaseHTTPRequestHandler):
             if resource == "guests":
                 return handle_guests(self, method, path_parts, qs, body)
             if resource == "reservations":
-                # Check for /api/reservations/<id>/notes
                 if len(path_parts) == 4 and path_parts[3] == "notes":
                     return handle_reservation_notes(self, method, path_parts, qs, body)
                 return handle_reservations(self, method, path_parts, qs, body)
@@ -547,7 +552,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    # Ensure the data directory exists (for Railway persistent volume)
     import os as _os
     _db_dir = _os.path.dirname(_os.environ.get("DB_PATH", "/app/data/mckaybay.db"))
     if _db_dir:
