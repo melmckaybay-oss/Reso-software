@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>McKay Bay — 2026 Batch Entry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; }
+  header { background: #1a535c; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.2rem; font-weight: 600; }
+  header span { font-size: 0.85rem; opacity: 0.8; }
+  .progress-bar { background: #e2e8f0; height: 6px; }
+  .progress-fill { background: #38b2ac; height: 100%; transition: width 0.3s; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+
+  .week-header { background: #1a535c; color: white; padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; margin-top: 32px; }
+  .week-header:first-of-type { margin-top: 0; }
+
+  .res-card { background: white; border: 1px solid #e2e8f0; border-top: none; padding: 16px; position: relative; }
+  .res-card:last-child { border-radius: 0 0 8px 8px; margin-bottom: 0; }
+  .res-card + .res-card { border-top: 1px solid #f0f4f8; }
+
+  .res-card h3 { font-size: 1rem; font-weight: 600; color: #1a535c; margin-bottom: 10px; }
+  .res-card .meta { font-size: 0.8rem; color: #718096; margin-bottom: 12px; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fields.three { grid-template-columns: 1fr 1fr 1fr; }
+  .fields.full { grid-template-columns: 1fr; }
+  label { display: block; font-size: 0.78rem; font-weight: 500; color: #4a5568; margin-bottom: 3px; }
+  input, select, textarea { width: 100%; padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 0.85rem; color: #2d3748; }
+  textarea { resize: vertical; min-height: 52px; font-size: 0.82rem; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #38b2ac; box-shadow: 0 0 0 2px rgba(56,178,172,0.2); }
+
+  .rooms-section { margin-top: 12px; }
+  .rooms-section h4 { font-size: 0.8rem; font-weight: 600; color: #4a5568; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .room-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .room-row select { flex: 2; min-width: 140px; }
+  .room-row input[type=number] { flex: 1; min-width: 60px; }
+  .room-row input[type=checkbox] { width: auto; margin: 0 4px; }
+  .room-row label { margin: 0; font-size: 0.78rem; white-space: nowrap; }
+  .room-tag { font-size: 0.75rem; background: #ebf8ff; color: #2b6cb0; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .meal-tag { font-size: 0.75rem; background: #f0fff4; color: #276749; padding: 2px 8px; border-radius: 10px; }
+  .nm-tag { font-size: 0.75rem; background: #fff5f5; color: #9b2c2c; padding: 2px 8px; border-radius: 10px; }
+
+  .charters-section { margin-top: 10px; }
+  .charter-row { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .charter-row input, .charter-row select { flex: 1; min-width: 100px; }
+
+  .card-actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+  .btn-submit { background: #1a535c; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+  .btn-submit:hover { background: #144044; }
+  .btn-submit:disabled { background: #a0aec0; cursor: not-allowed; }
+  .btn-skip { background: none; border: 1px solid #cbd5e0; color: #718096; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .btn-skip:hover { background: #f7fafc; }
+  .status-badge { font-size: 0.8rem; padding: 4px 10px; border-radius: 10px; font-weight: 500; }
+  .status-pending { background: #fef3c7; color: #92400e; }
+  .status-done { background: #d1fae5; color: #065f46; }
+  .status-skipped { background: #f3f4f6; color: #6b7280; }
+  .status-error { background: #fee2e2; color: #991b1b; }
+
+  .summary-bar { position: sticky; bottom: 0; background: white; border-top: 2px solid #e2e8f0; padding: 12px 24px; display: flex; gap: 20px; align-items: center; font-size: 0.85rem; z-index: 100; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); }
+  .summary-bar strong { color: #1a535c; }
+  .btn-submit-all { background: #38b2ac; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; margin-left: auto; }
+  .btn-submit-all:hover { background: #2c7a7b; }
+
+  .note-tag { font-size: 0.75rem; background: #fffbeb; color: #92400e; padding: 2px 8px; border-radius: 10px; border: 1px solid #fde68a; }
+  .field-group { }
+  .divider { height: 1px; background: #f0f4f8; margin: 12px 0; }
+
+  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; z-index: 999; animation: slideIn 0.3s; }
+  .toast-success { background: #065f46; color: white; }
+  .toast-error { background: #991b1b; color: white; }
+  @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>🏔</div>
+  <div>
+    <h1>McKay Bay Lodge — 2026 Season Data Entry</h1>
+    <span id="progress-text">Loading reservations…</span>
+  </div>
+</header>
+<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+<div class="container" id="app"></div>
+
+<div class="summary-bar">
+  <div>✅ <strong id="count-done">0</strong> submitted</div>
+  <div>⏭ <strong id="count-skip">0</strong> skipped</div>
+  <div>❌ <strong id="count-err">0</strong> errors</div>
+  <button class="btn-submit-all" onclick="submitAll()">Submit All Pending ▶</button>
+</div>
+
+<script>
+const API = '';
+
+// Accommodation ID map
+const ACCOM = {
+  'Room 1':1,'Room 2':2,'Room 3':3,'Room 4':4,'Room 5':5,
+  'Room 6':6,'Room 7':7,'Room 8':8,'Room 9':9,'Room 10':10,
+  'Creekside Cabin':11,'Forest View Cabin':12,'Boat Shop Suite':13,
+  'MB1':14,'MB2':15,
+  'Contractor Boat #1':16,'Contractor Boat #2':17,'Contractor Boat #3':18
+};
+
+const ACCOM_OPTIONS = Object.entries(ACCOM).map(([n,id])=>`<option value="${id}">${n}</option>`).join('');
+
+// ── ALL 2026 RESERVATIONS ────────────────────────────────────────────────────
+// Format: { id, week, guest:{first_name,last_name,phone,email,is_returning},
+//           arrival_date, departure_date, arrival_method, num_guests,
+//           rooms:[{accommodation_id, num_guests, meal_package}],
+//           charters:[{charter_date, charter_type, duration, num_guests}],
+//           boats:[{boat_name,boat_length}],
+//           special_requests, internal_notes, dietary:[{guest_desc,requirement}] }
+
+const RESERVATIONS = [
+
+  // ═══════════════════════════════════════════════════════
+  // MAY
+  // ═══════════════════════════════════════════════════════
+  { id:'may-01', week:'May 18–24',
+    guest:{first_name:'Jordan',last_name:'Arala',is_returning:0},
+    arrival_date:'2026-05-18', departure_date:'2026-05-21',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM flat rate. Guest count not specified (self-contained).',
+    dietary:[], charters:[] },
+
+  { id:'may-02', week:'May 18–24',
+    guest:{first_name:'Jordan',last_name:'Huscroft',is_returning:0},
+    arrival_date:'2026-05-22', departure_date:'2026-05-25',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:9,num_guests:0,meal_package:false},
+      {accommodation_id:10,num_guests:0,meal_package:false},
+      {accommodation_id:11,num_guests:0,meal_package:false}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Meal plan TBD — guest will decide on arrival. Group booking across Rm 9, Rm 10, Creekside Cabin.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JUNE — Week 1 (June 1–7)
+  // ═══════════════════════════════════════════════════════
+  { id:'jun-01', week:'June 1–7',
+    guest:{first_name:'Patricia',last_name:'Eakin',is_returning:1},
+    arrival_date:'2026-06-01', departure_date:'2026-06-03',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Returning guest. Rm 2 guest (1 person) may leave earlier.',
+    dietary:[], charters:[] },
+
+  { id:'jun-02', week:'June 1–7',
+    guest:{first_name:'Chad',last_name:'Smith',is_returning:0},
+    arrival_date:'2026-06-04', departure_date:'2026-06-06',
+    arrival_method:'boat', num_guests:20,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:4,num_guests:2,meal_package:true},
+      {accommodation_id:5,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:2,meal_package:true},
+      {accommodation_id:7,num_guests:2,meal_package:true},
+      {accommodation_id:8,num_guests:2,meal_package:true},
+      {accommodation_id:9,num_guests:2,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:"Leanna's Wedding event. 5 charter boats: MB1, MB2 + Contractor Boats #1,#2,#3 on June 5.",
+    dietary:[],
+    charters:[
+      {charter_date:'2026-06-05',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-06-05',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-06-05',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-06-05',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-06-05',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'jun-03', week:'June 1–7',
+    guest:{first_name:'Syd',last_name:'and Pete',is_returning:0},
+    arrival_date:'2026-06-05', departure_date:'2026-06-08',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:13,num_guests:2,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:"Leanna's Wedding. NO CHARGE — friends of family. Breakfast included despite NM.",
+    dietary:[], charters:[] },
+
+  { id:'jun-04', week:'June 1–7',
+    guest:{first_name:'Cassie',last_name:'Smith',is_returning:0},
+    arrival_date:'2026-06-05', departure_date:'2026-06-09',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:"Leanna's Wedding.",
+    dietary:[], charters:[] },
+
+  { id:'jun-05', week:'June 1–7',
+    guest:{first_name:'Scott',last_name:'McLeod',is_returning:0},
+    arrival_date:'2026-06-05', departure_date:'2026-06-08',
+    arrival_method:'boat', num_guests:7,
+    rooms:[{accommodation_id:12,num_guests:7,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:"Leanna's Wedding.",
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JUNE — Week 2 (June 8–14)
+  // ═══════════════════════════════════════════════════════
+  { id:'jun-06', week:'June 8–14',
+    guest:{first_name:'Don',last_name:'McCormick',is_returning:0},
+    arrival_date:'2026-06-09', departure_date:'2026-06-12',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:4,num_guests:1,meal_package:true},
+      {accommodation_id:5,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Rm 5 guest is Vic Rollins — booked together under McCormick. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-07', week:'June 8–14',
+    guest:{first_name:'Randy',last_name:'Buholta',is_returning:1},
+    arrival_date:'2026-06-14', departure_date:'2026-06-19',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'Caesar salad only. Pepsi + Fresca in room.',
+    internal_notes:'Returning guest. Dietary: Caesar salad only. Pepsi + Fresca in room — stock before arrival.',
+    dietary:[{guest_desc:'Randy Buholta',requirement:'Caesar salad only — no other salads'}],
+    charters:[] },
+
+  { id:'jun-08', week:'June 8–14',
+    guest:{first_name:'Ken',last_name:'Brower',is_returning:0},
+    arrival_date:'2026-06-13', departure_date:'2026-06-21',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:8,num_guests:2,meal_package:true},
+      {accommodation_id:9,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-09', week:'June 8–14',
+    guest:{first_name:'Wade',last_name:'Babcock',is_returning:0},
+    arrival_date:'2026-06-13', departure_date:'2026-06-21',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:10,num_guests:2,meal_package:true},
+      {accommodation_id:13,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'DNM on Boat Shop Suite (Rm 11). Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-10', week:'June 8–14',
+    guest:{first_name:'Bobby',last_name:'Flax',is_returning:0},
+    arrival_date:'2026-06-13', departure_date:'2026-06-21',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-11', week:'June 8–14',
+    guest:{first_name:'Rick',last_name:'Spink',is_returning:0},
+    arrival_date:'2026-06-13', departure_date:'2026-06-21',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:12,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JUNE — Week 3 (June 15–21)
+  // ═══════════════════════════════════════════════════════
+  { id:'jun-12', week:'June 15–21',
+    guest:{first_name:'Garrett',last_name:'Smith',is_returning:0},
+    arrival_date:'2026-06-20', departure_date:'2026-06-27',
+    arrival_method:'boat', num_guests:13,
+    rooms:[
+      {accommodation_id:3,num_guests:1,meal_package:true},
+      {accommodation_id:5,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:2,meal_package:true},
+      {accommodation_id:8,num_guests:3,meal_package:true},
+      {accommodation_id:9,num_guests:3,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Group includes Dwight Smith (Rm 3), Jordan Arula (Rm 5+6), Neil Stevens+Sean+Wayne (Rm 8), Steen (Rm 9), Pat Edwards (Rm 10). 13 total.',
+    dietary:[], charters:[] },
+
+  { id:'jun-13', week:'June 15–21',
+    guest:{first_name:'Brent',last_name:'Von Alker',is_returning:0},
+    arrival_date:'2026-06-17', departure_date:'2026-06-24',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:13,num_guests:3,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat. Wife + grandchild.',
+    dietary:[], charters:[] },
+
+  { id:'jun-14', week:'June 15–21',
+    guest:{first_name:'Amy',last_name:'Talbolt',is_returning:0},
+    arrival_date:'2026-06-17', departure_date:'2026-06-19',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF x2 days.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-06-17',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-06-18',charter_type:'fishing',duration:'full_day',num_guests:2}
+    ] },
+
+  { id:'jun-15', week:'June 15–21',
+    guest:{first_name:'Chris',last_name:'Knott',is_returning:0},
+    arrival_date:'2026-06-20', departure_date:'2026-06-27',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:12,num_guests:6,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JUNE — Week 4 (June 22–28)
+  // ═══════════════════════════════════════════════════════
+  { id:'jun-16', week:'June 22–28',
+    guest:{first_name:'Brian',last_name:'Goodman',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-06-26',
+    arrival_method:'boat', num_guests:6,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:3,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Friends Beaman group. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-17', week:'June 22–28',
+    guest:{first_name:'Jon',last_name:'Konnert',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-07-05',
+    arrival_method:'boat', num_guests:6,
+    rooms:[
+      {accommodation_id:5,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:2,meal_package:true},
+      {accommodation_id:7,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'DNM all rooms. Rm 7 guests are Jon\'s sons Jesse + Jon Konnert.',
+    dietary:[], charters:[] },
+
+  { id:'jun-18', week:'June 22–28',
+    guest:{first_name:'Jack',last_name:'Bandstra',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-06-26',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:8,num_guests:2,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'1 person moves from Rm 10 to Rm 6 mid-stay — verify on arrival.',
+    dietary:[], charters:[] },
+
+  { id:'jun-19', week:'June 22–28',
+    guest:{first_name:'Ron',last_name:'Beaman',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-07-05',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-20', week:'June 22–28',
+    guest:{first_name:'Matthew',last_name:'Vaughan',is_returning:0},
+    arrival_date:'2026-06-26', departure_date:'2026-06-28',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:13,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-21', week:'June 22–28',
+    guest:{first_name:'Garth',last_name:'Turner',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-06-29',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:11,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'Celiac disease.',
+    internal_notes:'Dietary: Celiac disease — oru celiac noted on calendar.',
+    dietary:[{guest_desc:'Garth Turner',requirement:'Celiac disease — gluten free'}],
+    charters:[] },
+
+  { id:'jun-22', week:'June 22–28',
+    guest:{first_name:'Greg',last_name:'Chan',is_returning:0},
+    arrival_date:'2026-06-22', departure_date:'2026-06-26',
+    arrival_method:'boat', num_guests:8,
+    rooms:[{accommodation_id:12,num_guests:8,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 3 boats.',
+    dietary:[], charters:[] },
+
+  { id:'jun-23', week:'June 22–28',
+    guest:{first_name:'Connie',last_name:'Gall',is_returning:0},
+    arrival_date:'2026-06-26', departure_date:'2026-07-04',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:12,num_guests:6,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat x3. Group: Connie Gall + Teresa Kasporit. Dinner note: Teresa.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JUNE 29 – JULY 5
+  // ═══════════════════════════════════════════════════════
+  { id:'jun-24', week:'June 29–July 5',
+    guest:{first_name:'Phelps',last_name:'Group',is_returning:0},
+    arrival_date:'2026-06-29', departure_date:'2026-07-01',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:8,num_guests:2,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Jill + Corey + 2 teen boys. FF both days.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-06-29',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-06-30',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'jun-25', week:'June 29–July 5',
+    guest:{first_name:'Kathy',last_name:'Klaus Heusler',is_returning:0},
+    arrival_date:'2026-06-29', departure_date:'2026-07-02',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat. DNM.',
+    dietary:[], charters:[] },
+
+  { id:'jun-26', week:'June 29–July 5',
+    guest:{first_name:'Kirk',last_name:'MacDonald',is_returning:0},
+    arrival_date:'2026-06-29', departure_date:'2026-07-04',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:13,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jun-27', week:'June 29–July 5',
+    guest:{first_name:'William',last_name:'Brown',is_returning:0},
+    arrival_date:'2026-06-29', departure_date:'2026-07-05',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  { id:'jun-28', week:'June 29–July 5',
+    guest:{first_name:'Jamie',last_name:'McRae',is_returning:0},
+    arrival_date:'2026-07-04', departure_date:'2026-07-12',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:12,num_guests:6,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. Arrives July 4.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JULY 6–12
+  // ═══════════════════════════════════════════════════════
+  { id:'jul-01', week:'July 6–12',
+    guest:{first_name:'Michael',last_name:'Weiss',is_returning:0},
+    arrival_date:'2026-07-07', departure_date:'2026-07-10',
+    arrival_method:'boat', num_guests:6,
+    rooms:[
+      {accommodation_id:7,num_guests:2,meal_package:true},
+      {accommodation_id:8,num_guests:2,meal_package:true},
+      {accommodation_id:9,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Whale Research group. Own Boat x3 rooms.',
+    dietary:[], charters:[] },
+
+  { id:'jul-02', week:'July 6–12',
+    guest:{first_name:'Wade',last_name:'Babcock',is_returning:0},
+    arrival_date:'2026-07-09', departure_date:'2026-07-14',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:10,num_guests:2,meal_package:true},
+      {accommodation_id:13,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jul-03', week:'July 6–12',
+    guest:{first_name:'Al',last_name:'Beauding',is_returning:0},
+    arrival_date:'2026-07-07', departure_date:'2026-07-10',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:11,num_guests:6,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 3 boats.',
+    dietary:[], charters:[] },
+
+  { id:'jul-04', week:'July 6–12',
+    guest:{first_name:'David',last_name:'Bondar',is_returning:0},
+    arrival_date:'2026-07-07', departure_date:'2026-07-09',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:12,num_guests:4,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 2–3 boats.',
+    dietary:[], charters:[] },
+
+  { id:'jul-05', week:'July 6–12',
+    guest:{first_name:'Rick',last_name:'Van Adreicher',is_returning:0},
+    arrival_date:'2026-07-10', departure_date:'2026-07-19',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:12,num_guests:4,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jul-06', week:'July 6–12',
+    guest:{first_name:'Brandon',last_name:'Winters',is_returning:0},
+    arrival_date:'2026-07-11', departure_date:'2026-07-13',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Rm 1: Brandon + GF (couple). Rm 2: 2 men. Own Boat.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JULY 13–19
+  // ═══════════════════════════════════════════════════════
+  { id:'jul-07', week:'July 13–19',
+    guest:{first_name:'Holly',last_name:'Fearnbach',is_returning:0},
+    arrival_date:'2026-07-09', departure_date:'2026-07-23',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:13,num_guests:3,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Marine research — 14 nights. NO CHARGE. NM. Give lodge room if available, change bedding. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jul-08', week:'July 13–19',
+    guest:{first_name:'Paul',last_name:'Matjaz',is_returning:0},
+    arrival_date:'2026-07-16', departure_date:'2026-07-20',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Two couples. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'jul-09', week:'July 13–19',
+    guest:{first_name:'Rob',last_name:'Steele',is_returning:0},
+    arrival_date:'2026-07-14', departure_date:'2026-07-16',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF x2 days. Also on MB1+MB2 July 14-15.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-07-14',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-07-15',charter_type:'fishing',duration:'full_day',num_guests:2}
+    ] },
+
+  { id:'jul-10', week:'July 13–19',
+    guest:{first_name:'Tony',last_name:'Preston',is_returning:0},
+    arrival_date:'2026-07-16', departure_date:'2026-07-20',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:11,num_guests:0,meal_package:false},
+      {accommodation_id:12,num_guests:0,meal_package:false}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat. Booked both Creekside Cabin and Forest View Cabin.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JULY 20–26
+  // ═══════════════════════════════════════════════════════
+  { id:'jul-11', week:'July 20–26',
+    guest:{first_name:'Geoff',last_name:'Schellenberg',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:11,num_guests:0,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-21',charter_type:'fishing',duration:'full_day',num_guests:4}] },
+
+  { id:'jul-12', week:'July 20–26',
+    guest:{first_name:'Terry',last_name:'Kellaway',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:3,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-13', week:'July 20–26',
+    guest:{first_name:'Al',last_name:'Patterson',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:2,num_guests:0,meal_package:true},
+      {accommodation_id:4,num_guests:0,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-14', week:'July 20–26',
+    guest:{first_name:'Geoff',last_name:'Hackett',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:7,num_guests:0,meal_package:true},
+      {accommodation_id:8,num_guests:0,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'DNM.',
+    dietary:[], charters:[] },
+
+  { id:'jul-15', week:'July 20–26',
+    guest:{first_name:'Dean',last_name:'Miekle',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Dean & Kelly Miekle.',
+    dietary:[], charters:[] },
+
+  { id:'jul-16', week:'July 20–26',
+    guest:{first_name:'Gordon',last_name:'Curl',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-21',charter_type:'fishing',duration:'full_day',num_guests:2}] },
+
+  { id:'jul-17', week:'July 20–26',
+    guest:{first_name:'Dave',last_name:'Helmcky',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  { id:'jul-18', week:'July 20–26',
+    guest:{first_name:'Wei',last_name:'Gong',is_returning:0},
+    arrival_date:'2026-07-20', departure_date:'2026-07-27',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:12,num_guests:0,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // JULY 27 – AUG 2
+  // ═══════════════════════════════════════════════════════
+  { id:'jul-19', week:'July 27–Aug 2',
+    guest:{first_name:'David',last_name:'St Jean',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:1,num_guests:1,meal_package:true},
+      {accommodation_id:7,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'FF on Rm 7 dates.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-28',charter_type:'fishing',duration:'full_day',num_guests:2}] },
+
+  { id:'jul-20', week:'July 27–Aug 2',
+    guest:{first_name:'Robert',last_name:'Hamaguchi',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:2,num_guests:1,meal_package:true},
+      {accommodation_id:8,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-28',charter_type:'fishing',duration:'full_day',num_guests:2}] },
+
+  { id:'jul-21', week:'July 27–Aug 2',
+    guest:{first_name:'Leon',last_name:'LeChasseur',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:3,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-22', week:'July 27–Aug 2',
+    guest:{first_name:'Audrey',last_name:'Denton',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:4,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-23', week:'July 27–Aug 2',
+    guest:{first_name:'Paul',last_name:'Saddler',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:4,num_guests:0,meal_package:true},
+      {accommodation_id:5,num_guests:0,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'Paul Saddler.',
+    dietary:[], charters:[] },
+
+  { id:'jul-24', week:'July 27–Aug 2',
+    guest:{first_name:'Greg',last_name:'Zyp',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:6,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Also listed with Pat Lodge in Rm 6.',
+    dietary:[], charters:[] },
+
+  { id:'jul-25', week:'July 27–Aug 2',
+    guest:{first_name:'Kevin',last_name:'Rhodes',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:9,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-28',charter_type:'fishing',duration:'full_day',num_guests:2}] },
+
+  { id:'jul-26', week:'July 27–Aug 2',
+    guest:{first_name:'Blake',last_name:'Medleur',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:10,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-27', week:'July 27–Aug 2',
+    guest:{first_name:'Keith',last_name:'Ainskey',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:13,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'jul-28', week:'July 27–Aug 2',
+    guest:{first_name:'Pam',last_name:'Holmes',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  { id:'jul-29', week:'July 27–Aug 2',
+    guest:{first_name:'Jeff',last_name:'Wawryk',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'All meals. First name not on calendar — verify.',
+    dietary:[], charters:[] },
+
+  { id:'jul-30', week:'July 27–Aug 2',
+    guest:{first_name:'Dylan',last_name:'Von Brant',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:12,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-07-28',charter_type:'fishing',duration:'full_day',num_guests:2}] },
+
+  { id:'jul-31', week:'July 27–Aug 2',
+    guest:{first_name:'Greg',last_name:'Peachy',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-04',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:12,num_guests:0,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUGUST 3–9
+  // ═══════════════════════════════════════════════════════
+  { id:'aug-01', week:'Aug 3–9',
+    guest:{first_name:'Richard',last_name:'Stern',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-07',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:1,num_guests:1,meal_package:true},
+      {accommodation_id:4,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'FF Tues–Thurs.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-04',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-08-05',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-08-06',charter_type:'fishing',duration:'full_day',num_guests:2}
+    ] },
+
+  { id:'aug-02', week:'Aug 3–9',
+    guest:{first_name:'Robbie',last_name:'Donaldson',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-07',
+    arrival_method:'boat', num_guests:7,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:6,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-03', week:'Aug 3–9',
+    guest:{first_name:'Luke',last_name:'Gibson',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-08',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:5,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat. Group change/room change noted mid-week.',
+    dietary:[], charters:[] },
+
+  { id:'aug-04', week:'Aug 3–9',
+    guest:{first_name:'Rod',last_name:'Doroshuk',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-07',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:7,num_guests:4,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'FF Tues–Fri. Need cot made up.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-04',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-08-05',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-08-06',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'aug-05', week:'Aug 3–9',
+    guest:{first_name:'Erik',last_name:'Pipkin',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-07',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:8,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-06', week:'Aug 3–9',
+    guest:{first_name:'Jeff',last_name:'Prestmo',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-08',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:9,num_guests:2,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Change bedding noted mid-stay.',
+    dietary:[], charters:[] },
+
+  { id:'aug-07', week:'Aug 3–9',
+    guest:{first_name:'Tim',last_name:'McGrouton',is_returning:0},
+    arrival_date:'2026-08-04', departure_date:'2026-08-06',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:13,num_guests:4,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 2×18ft+ OB.',
+    dietary:[], charters:[] },
+
+  { id:'aug-08', week:'Aug 3–9',
+    guest:{first_name:'Jeff',last_name:'Wawryk',is_returning:0},
+    arrival_date:'2026-07-27', departure_date:'2026-08-05',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:11,num_guests:6,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'All meals. Carry-over from July 27 week.',
+    dietary:[], charters:[] },
+
+  { id:'aug-09', week:'Aug 3–9',
+    guest:{first_name:'Chris',last_name:'Ramsay',is_returning:0},
+    arrival_date:'2026-08-06', departure_date:'2026-08-09',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:11,num_guests:3,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-10', week:'Aug 3–9',
+    guest:{first_name:'Kyle',last_name:'Knoof',is_returning:0},
+    arrival_date:'2026-08-08', departure_date:'2026-08-14',
+    arrival_method:'boat', num_guests:7,
+    rooms:[{accommodation_id:12,num_guests:7,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 7 people. 2×OB.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUGUST 10–16
+  // ═══════════════════════════════════════════════════════
+  { id:'aug-11', week:'Aug 10–16',
+    guest:{first_name:'Don',last_name:'McCormick',is_returning:1},
+    arrival_date:'2026-08-10', departure_date:'2026-08-14',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Donna allergy: garlic. 5:30 dinner preferred. Own Boat. Returning guest.',
+    dietary:[{guest_desc:'Donna McCormick',requirement:'Garlic allergy'}], charters:[] },
+
+  { id:'aug-12', week:'Aug 10–16',
+    guest:{first_name:'Greg',last_name:'Churchill',is_returning:0},
+    arrival_date:'2026-08-14', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-13', week:'Aug 10–16',
+    guest:{first_name:'Bob',last_name:'Kemph',is_returning:0},
+    arrival_date:'2026-08-10', departure_date:'2026-08-16',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:4,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat. Rooms 3+4 same group.',
+    dietary:[], charters:[] },
+
+  { id:'aug-14', week:'Aug 10–16',
+    guest:{first_name:'Joe',last_name:'Pearson',is_returning:0},
+    arrival_date:'2026-08-14', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:5,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Joe Pearson + Ted.',
+    dietary:[], charters:[] },
+
+  { id:'aug-15', week:'Aug 10–16',
+    guest:{first_name:'Brad',last_name:'Holditch',is_returning:0},
+    arrival_date:'2026-08-10', departure_date:'2026-08-14',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:6,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Dad has mobility issues — DNM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-16', week:'Aug 10–16',
+    guest:{first_name:'Bjorn',last_name:'Rygg',is_returning:0},
+    arrival_date:'2026-08-15', departure_date:'2026-08-22',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:6,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'FF. Also on MB1+MB2 from Aug 15.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-16',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-08-17',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'aug-17', week:'Aug 10–16',
+    guest:{first_name:'Mike',last_name:'Thomas',is_returning:0},
+    arrival_date:'2026-08-11', departure_date:'2026-08-14',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:"Rick Taylor's charter.",
+    dietary:[], charters:[{charter_date:'2026-08-12',charter_type:'fishing',duration:'full_day',num_guests:3}] },
+
+  { id:'aug-18', week:'Aug 10–16',
+    guest:{first_name:'Kevin',last_name:'Stozuk',is_returning:0},
+    arrival_date:'2026-08-14', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:7,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'aug-19', week:'Aug 10–16',
+    guest:{first_name:'Mike',last_name:'Granholm',is_returning:0},
+    arrival_date:'2026-08-12', departure_date:'2026-08-14',
+    arrival_method:'boat', num_guests:6,
+    rooms:[
+      {accommodation_id:8,num_guests:3,meal_package:true},
+      {accommodation_id:9,num_guests:3,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-20', week:'Aug 10–16',
+    guest:{first_name:'Terry',last_name:'Kelloway',is_returning:0},
+    arrival_date:'2026-08-11', departure_date:'2026-08-13',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:10,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat. Terry + Mindy Kelloway.',
+    dietary:[], charters:[] },
+
+  { id:'aug-21', week:'Aug 10–16',
+    guest:{first_name:'Mitch',last_name:'Long',is_returning:0},
+    arrival_date:'2026-08-15', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:13,num_guests:2,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-22', week:'Aug 10–16',
+    guest:{first_name:'Craig',last_name:'Finnigan',is_returning:0},
+    arrival_date:'2026-08-12', departure_date:'2026-08-15',
+    arrival_method:'boat', num_guests:12,
+    rooms:[
+      {accommodation_id:11,num_guests:6,meal_package:true},
+      {accommodation_id:12,num_guests:6,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Finnigan Group — 12 total. All meals.',
+    dietary:[], charters:[] },
+
+  { id:'aug-23', week:'Aug 10–16',
+    guest:{first_name:'Robbie',last_name:'Rotz',is_returning:0},
+    arrival_date:'2026-08-14', departure_date:'2026-08-17',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Robbie Rotz + Jim.',
+    dietary:[], charters:[] },
+
+  { id:'aug-24', week:'Aug 10–16',
+    guest:{first_name:'Pauline',last_name:'Tolen',is_returning:0},
+    arrival_date:'2026-08-16', departure_date:'2026-08-20',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:12,num_guests:4,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUGUST 17–23
+  // ═══════════════════════════════════════════════════════
+  { id:'aug-25', week:'Aug 17–23',
+    guest:{first_name:'Peter',last_name:'Casola',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'With Sharon Cleve. ❓ Verify meal plan + OB.',
+    dietary:[], charters:[] },
+
+  { id:'aug-26', week:'Aug 17–23',
+    guest:{first_name:'Bob',last_name:'Cooper',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:5,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-27', week:'Aug 17–23',
+    guest:{first_name:'Dave',last_name:'Jamieson',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:3,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat. Moves to Rm 8 mid-week.',
+    dietary:[], charters:[] },
+
+  { id:'aug-28', week:'Aug 17–23',
+    guest:{first_name:'Ian',last_name:'McLeod',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:4,num_guests:1,meal_package:true},
+      {accommodation_id:10,num_guests:2,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'aug-29', week:'Aug 17–23',
+    guest:{first_name:'Terry',last_name:'Cameron',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-20',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:6,num_guests:2,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-30', week:'Aug 17–23',
+    guest:{first_name:'Randy',last_name:'Buholta',is_returning:1},
+    arrival_date:'2026-08-17', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'Caesar salad only. Pepsi + Fresca in room.',
+    internal_notes:'Returning guest. Pete + Jamie with him. Caesar salad only, Pepsi + Fresca in room.',
+    dietary:[{guest_desc:'Randy Buholta',requirement:'Caesar salad only — no other salads'}],
+    charters:[] },
+
+  { id:'aug-31', week:'Aug 17–23',
+    guest:{first_name:'Sam',last_name:'Friketich',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:8,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'DNM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-32', week:'Aug 17–23',
+    guest:{first_name:'Mark',last_name:'Allderyce',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:9,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-33', week:'Aug 17–23',
+    guest:{first_name:'Markus',last_name:'Schnorbus',is_returning:0},
+    arrival_date:'2026-08-21', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:2,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'DNM. Mobility issue — 1 guest ~80 yrs old. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-34', week:'Aug 17–23',
+    guest:{first_name:'Dave',last_name:'Castner',is_returning:0},
+    arrival_date:'2026-08-19', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:4,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'aug-35', week:'Aug 17–23',
+    guest:{first_name:'Bruce',last_name:'Bolton',is_returning:0},
+    arrival_date:'2026-08-21', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:5,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:5,num_guests:3,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'aug-36', week:'Aug 17–23',
+    guest:{first_name:'Chuck',last_name:'Crosby',is_returning:0},
+    arrival_date:'2026-08-21', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:8,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'aug-37', week:'Aug 17–23',
+    guest:{first_name:'Mindy',last_name:'Kelloway',is_returning:0},
+    arrival_date:'2026-08-21', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Terry + Mindy Kelloway. DNM — unless Rm 6 available. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-38', week:'Aug 17–23',
+    guest:{first_name:'Tracey',last_name:'Hallam',is_returning:0},
+    arrival_date:'2026-08-21', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:10,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-39', week:'Aug 17–23',
+    guest:{first_name:'Walter',last_name:'Coles',is_returning:0},
+    arrival_date:'2026-08-17', departure_date:'2026-08-21',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:11,num_guests:4,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF x2 days. Also on MB1 Aug 18–20.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-18',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-08-19',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'aug-40', week:'Aug 17–23',
+    guest:{first_name:'Tim',last_name:'Claudill',is_returning:0},
+    arrival_date:'2026-08-20', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:5,
+    rooms:[{accommodation_id:11,num_guests:5,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM.',
+    dietary:[], charters:[] },
+
+  { id:'aug-41', week:'Aug 17–23',
+    guest:{first_name:'Eric',last_name:'Buff',is_returning:0},
+    arrival_date:'2026-08-22', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:12,num_guests:6,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF. Also on MB1+MB2 from Fri Aug 21.',
+    dietary:[],
+    charters:[{charter_date:'2026-08-22',charter_type:'fishing',duration:'full_day',num_guests:4}] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUGUST 24–30
+  // ═══════════════════════════════════════════════════════
+  { id:'aug-42', week:'Aug 24–30',
+    guest:{first_name:'Ken',last_name:'Marble',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-27',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-43', week:'Aug 24–30',
+    guest:{first_name:'Jeff',last_name:'Wawryk',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:4,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-44', week:'Aug 24–30',
+    guest:{first_name:'Dave',last_name:'Jamieson',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-27',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:3,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-45', week:'Aug 24–30',
+    guest:{first_name:'Sam',last_name:'Friketich',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:4,
+    rooms:[
+      {accommodation_id:5,num_guests:2,meal_package:true},
+      {accommodation_id:6,num_guests:2,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'With daughter(s). FF on MB1.',
+    dietary:[], charters:[] },
+
+  { id:'aug-46', week:'Aug 24–30',
+    guest:{first_name:'Adam',last_name:'Hill',is_returning:0},
+    arrival_date:'2026-08-26', departure_date:'2026-08-29',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-47', week:'Aug 24–30',
+    guest:{first_name:'John',last_name:'Leeds',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:8,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-08-25',charter_type:'fishing',duration:'full_day',num_guests:3}] },
+
+  { id:'aug-48', week:'Aug 24–30',
+    guest:{first_name:'John',last_name:'Popowich',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:9,num_guests:3,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-49', week:'Aug 24–30',
+    guest:{first_name:'Brian',last_name:'Burry',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:10,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'DNM. Own Boat.',
+    dietary:[], charters:[] },
+
+  { id:'aug-50', week:'Aug 24–30',
+    guest:{first_name:'Brent',last_name:'Von Alker',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:13,num_guests:3,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. Own Boat. Wife + grandchild.',
+    dietary:[], charters:[] },
+
+  { id:'aug-51', week:'Aug 24–30',
+    guest:{first_name:'Tim',last_name:'Claudill',is_returning:0},
+    arrival_date:'2026-08-24', departure_date:'2026-08-26',
+    arrival_method:'boat', num_guests:5,
+    rooms:[{accommodation_id:11,num_guests:5,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM. Carry-over from Aug 20.',
+    dietary:[], charters:[] },
+
+  { id:'aug-52', week:'Aug 24–30',
+    guest:{first_name:'Mark',last_name:'Dauphine',is_returning:0},
+    arrival_date:'2026-08-26', departure_date:'2026-08-28',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:11,num_guests:3,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM. With Ken Davies. FF.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-26',charter_type:'fishing',duration:'full_day',num_guests:3},
+      {charter_date:'2026-08-27',charter_type:'fishing',duration:'full_day',num_guests:3}
+    ] },
+
+  { id:'aug-53', week:'Aug 24–30',
+    guest:{first_name:'Dave',last_name:'Peragine (Tremblay)',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-09-03',
+    arrival_method:'boat', num_guests:6,
+    rooms:[{accommodation_id:11,num_guests:6,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. FF. Group — also contact: Tremblay. Arrives Sat Aug 29.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-08-30',charter_type:'fishing',duration:'full_day',num_guests:4},
+      {charter_date:'2026-08-31',charter_type:'fishing',duration:'full_day',num_guests:4}
+    ] },
+
+  { id:'aug-54', week:'Aug 24–30',
+    guest:{first_name:'Greg',last_name:'Penner',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-08-31',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'2 nights only.',
+    dietary:[], charters:[] },
+
+  { id:'sep-04b', week:'Aug 31–Sept 6',
+    guest:{first_name:'Dave',last_name:'Peragine (Tremblay)',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-09-07',
+    arrival_method:'boat', num_guests:5,
+    rooms:[
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:4,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Peragine group carry-over into Sept. Also contact: Tremblay. FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-09-01',charter_type:'fishing',duration:'full_day',num_guests:4}] },
+
+  { id:'aug-55', week:'Aug 24–30',
+    guest:{first_name:'Petri',last_name:'Jarvenpa',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-09-03',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:12,num_guests:4,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. OB. One guest leaves early.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUG 31 – SEPT 6
+  // ═══════════════════════════════════════════════════════
+  { id:'sep-01', week:'Aug 31–Sept 6',
+    guest:{first_name:'Jan',last_name:'Harrill',is_returning:0},
+    arrival_date:'2026-08-30', departure_date:'2026-09-02',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Jan Harrill + wife. Chennelle + Heusler friends.',
+    dietary:[], charters:[] },
+
+  { id:'sep-02', week:'Aug 31–Sept 6',
+    guest:{first_name:'Brian',last_name:'Goodman',is_returning:0},
+    arrival_date:'2026-09-03', departure_date:'2026-09-06',
+    arrival_method:'boat', num_guests:10,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:1,meal_package:true}
+    ],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'10 total — Konnert, Beaman + Barnes friends. Alecia group 3–7 or 8. OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-03', week:'Aug 31–Sept 6',
+    guest:{first_name:'Brian',last_name:'Chennelle',is_returning:0},
+    arrival_date:'2026-08-30', departure_date:'2026-09-02',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:2,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Brian Chennelle + wife.',
+    dietary:[], charters:[] },
+
+  { id:'sep-04', week:'Aug 31–Sept 6',
+    guest:{first_name:'Keith',last_name:'Simpson',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-09-03',
+    arrival_method:'boat', num_guests:3,
+    rooms:[
+      {accommodation_id:4,num_guests:1,meal_package:true},
+      {accommodation_id:8,num_guests:2,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'sep-05', week:'Aug 31–Sept 6',
+    guest:{first_name:'Ron',last_name:'Beaman',is_returning:0},
+    arrival_date:'2026-09-04', departure_date:'2026-09-13',
+    arrival_method:'boat', num_guests:1,
+    rooms:[{accommodation_id:5,num_guests:1,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-06', week:'Aug 31–Sept 6',
+    guest:{first_name:'Jon',last_name:'Konnert',is_returning:0},
+    arrival_date:'2026-09-03', departure_date:'2026-09-08',
+    arrival_method:'boat', num_guests:4,
+    rooms:[{accommodation_id:6,num_guests:4,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'DNM. With Dave Cullen.',
+    dietary:[], charters:[] },
+
+  { id:'sep-07', week:'Aug 31–Sept 6',
+    guest:{first_name:'Sam',last_name:'Friketich',is_returning:0},
+    arrival_date:'2026-09-02', departure_date:'2026-09-04',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:7,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'FF.',
+    dietary:[],
+    charters:[{charter_date:'2026-09-02',charter_type:'fishing',duration:'full_day',num_guests:3}] },
+
+  { id:'sep-08', week:'Aug 31–Sept 6',
+    guest:{first_name:'Brian',last_name:'Barnes',is_returning:0},
+    arrival_date:'2026-09-03', departure_date:'2026-09-13',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:8,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Moves from Rm 3 — Brian Barnes. OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-09', week:'Aug 31–Sept 6',
+    guest:{first_name:'Kathie',last_name:'Klaus Heusler',is_returning:0},
+    arrival_date:'2026-08-28', departure_date:'2026-09-02',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-10', week:'Aug 31–Sept 6',
+    guest:{first_name:'Leon',last_name:'LeChasseur',is_returning:0},
+    arrival_date:'2026-09-01', departure_date:'2026-09-05',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:10,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'',
+    dietary:[], charters:[] },
+
+  { id:'sep-11', week:'Aug 31–Sept 6',
+    guest:{first_name:'Dave',last_name:'Patterson',is_returning:0},
+    arrival_date:'2026-08-29', departure_date:'2026-09-02',
+    arrival_method:'boat', num_guests:3,
+    rooms:[{accommodation_id:13,num_guests:3,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'All meals.',
+    dietary:[], charters:[] },
+
+  { id:'sep-12', week:'Aug 31–Sept 6',
+    guest:{first_name:'Paul',last_name:'Buttle',is_returning:0},
+    arrival_date:'2026-09-02', departure_date:'2026-09-13',
+    arrival_method:'boat', num_guests:5,
+    rooms:[{accommodation_id:11,num_guests:5,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 4–5 guests. OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-13', week:'Aug 31–Sept 6',
+    guest:{first_name:'Trevor',last_name:'Kolezac',is_returning:0},
+    arrival_date:'2026-09-06', departure_date:'2026-09-13',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:12,num_guests:0,meal_package:false}],
+    boats:[{boat_name:'',boat_length:''},{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'NM. 2×OB.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // SEPT 7–13
+  // ═══════════════════════════════════════════════════════
+  { id:'sep-14', week:'Sept 7–13',
+    guest:{first_name:'Susan',last_name:'Dallin O\'Grady',is_returning:0},
+    arrival_date:'2026-09-07', departure_date:'2026-09-09',
+    arrival_method:'driving', num_guests:2,
+    rooms:[{accommodation_id:1,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'Vegetarian.',
+    internal_notes:'Alecia group. Couple. Drive-in. Susan — vegetarian.',
+    dietary:[{guest_desc:'Susan',requirement:'Vegetarian'}], charters:[] },
+
+  { id:'sep-15', week:'Sept 7–13',
+    guest:{first_name:'Fred',last_name:'Dzida',is_returning:0},
+    arrival_date:'2026-09-07', departure_date:'2026-09-11',
+    arrival_method:'driving', num_guests:2,
+    rooms:[
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:7,num_guests:2,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'Couple. Drive-in. Need boat + head (no own boat — needs charter boat). FF.',
+    dietary:[],
+    charters:[
+      {charter_date:'2026-09-08',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-09-09',charter_type:'fishing',duration:'full_day',num_guests:2},
+      {charter_date:'2026-09-10',charter_type:'fishing',duration:'full_day',num_guests:2}
+    ] },
+
+  { id:'sep-16', week:'Sept 7–13',
+    guest:{first_name:'Paula',last_name:'Fernadez',is_returning:0},
+    arrival_date:'2026-09-12', departure_date:'2026-09-20',
+    arrival_method:'boat', num_guests:8,
+    rooms:[
+      {accommodation_id:1,num_guests:2,meal_package:true},
+      {accommodation_id:2,num_guests:2,meal_package:true},
+      {accommodation_id:3,num_guests:2,meal_package:true},
+      {accommodation_id:4,num_guests:2,meal_package:true},
+      {accommodation_id:5,num_guests:2,meal_package:true}
+    ],
+    boats:[], special_requests:'', internal_notes:'Large group across 5 rooms.',
+    dietary:[], charters:[] },
+
+  { id:'sep-17', week:'Sept 7–13',
+    guest:{first_name:'Wade',last_name:'Lindoff',is_returning:0},
+    arrival_date:'2026-09-11', departure_date:'2026-09-16',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:8,num_guests:2,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'Rm 8 — couple. ONM (#8 R noted).',
+    dietary:[], charters:[] },
+
+  { id:'sep-18', week:'Sept 7–13',
+    guest:{first_name:'Dave',last_name:'Dejardis',is_returning:0},
+    arrival_date:'2026-09-11', departure_date:'2026-09-20',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:9,num_guests:2,meal_package:true}],
+    boats:[], special_requests:'', internal_notes:'Dave Dejardis + Sarah.',
+    dietary:[], charters:[] },
+
+  { id:'sep-19', week:'Sept 7–13',
+    guest:{first_name:'Dean',last_name:'Miekle',is_returning:0},
+    arrival_date:'2026-09-05', departure_date:'2026-09-13',
+    arrival_method:'boat', num_guests:2,
+    rooms:[{accommodation_id:10,num_guests:2,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'Dean + Kelly Miekle. OB.',
+    dietary:[], charters:[] },
+
+  { id:'sep-20', week:'Sept 7–13',
+    guest:{first_name:'Rick',last_name:'Spink',is_returning:0},
+    arrival_date:'2026-09-12', departure_date:'2026-09-19',
+    arrival_method:'boat', num_guests:0,
+    rooms:[{accommodation_id:11,num_guests:0,meal_package:false}],
+    boats:[], special_requests:'', internal_notes:'NM. Tuna Derby.',
+    dietary:[], charters:[] },
+
+  { id:'sep-21', week:'Sept 7–13',
+    guest:{first_name:'Stan',last_name:'Kopp',is_returning:0},
+    arrival_date:'2026-09-11', departure_date:'2026-09-15',
+    arrival_method:'boat', num_guests:5,
+    rooms:[{accommodation_id:12,num_guests:5,meal_package:true}],
+    boats:[{boat_name:'',boat_length:''}],
+    special_requests:'', internal_notes:'All meals. OB.',
+    dietary:[], charters:[] },
+
+  // ═══════════════════════════════════════════════════════
+  // SEPT 14–20
+  // ═══════════════════════════════════════════════════════
+  { id:'sep-22', week:'Sept 14–20',
+    guest:{first_name:'RHIOT',last_name:'Group',is_returning:0},
+    arrival_date:'2026-09-17', departure_date:'2026-09-21',
+    arrival_method:'boat', num_guests:0,
+    rooms:[
+      {accommodation_id:1,num_guests:0,meal_package:true},
+      {accommodation_id:2,num_guests:0,meal_package:true},
+      {accommodation_id:3,num_guests:0,meal_package:true},
+      {accommodation_id:4,num_guests:0,meal_package:true},
+      {accommodation_id:5,num_guests:0,meal_package:true},
+      {accommodation_id:6,num_guests:0,meal_package:true},
+      {accommodation_id:7,num_guests:0,meal_package:true},
+      {accommodation_id:8,num_guests:0,meal_package:true}
+    ],
+    boats:[], special_requests:'',
+    internal_notes:'Coast Guard training group. Stays all winter every other week. 8 rooms (1–8). Derby timing.',
+    dietary:[], charters:[] },
+
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {};
+RESERVATIONS.forEach(r => { state[r.id] = 'pending'; });
+
+function updateCounts() {
+  const done = Object.values(state).filter(s=>s==='done').length;
+  const skip = Object.values(state).filter(s=>s==='skipped').length;
+  const err  = Object.values(state).filter(s=>s==='error').length;
+  const total = RESERVATIONS.length;
+  document.getElementById('count-done').textContent = done;
+  document.getElementById('count-skip').textContent = skip;
+  document.getElementById('count-err').textContent  = err;
+  document.getElementById('progress-text').textContent = `${done} of ${total} submitted`;
+  document.getElementById('progress-fill').style.width = `${(done/total)*100}%`;
+}
+
+function toast(msg, type='success') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+// ── Build payload from form ──────────────────────────────────────────────────
+function buildPayload(res) {
+  const card = document.getElementById('card-'+res.id);
+  const fn = card.querySelector('[name=first_name]').value.trim();
+  const ln = card.querySelector('[name=last_name]').value.trim();
+  const arr = card.querySelector('[name=arrival_date]').value;
+  const dep = card.querySelector('[name=departure_date]').value;
+  const method = card.querySelector('[name=arrival_method]').value;
+  const ng = parseInt(card.querySelector('[name=num_guests]').value)||0;
+  const sr = card.querySelector('[name=special_requests]').value.trim();
+  const notes = card.querySelector('[name=internal_notes]').value.trim();
+  const isRet = card.querySelector('[name=is_returning]').checked ? 1 : 0;
+
+  const rooms = [];
+  card.querySelectorAll('.room-entry').forEach(row => {
+    const aid = parseInt(row.querySelector('[name=accommodation_id]').value);
+    const rng = parseInt(row.querySelector('[name=room_guests]').value)||0;
+    const mp  = row.querySelector('[name=meal_package]').checked;
+    if (aid) rooms.push({accommodation_id:aid, num_guests:rng, meal_package:mp});
+  });
+
+  const charters = [];
+  card.querySelectorAll('.charter-entry').forEach(row => {
+    const cd = row.querySelector('[name=charter_date]').value;
+    const ct = row.querySelector('[name=charter_type]').value;
+    const dur = row.querySelector('[name=duration]').value;
+    const cng = parseInt(row.querySelector('[name=charter_guests]').value)||1;
+    if (cd) charters.push({charter_date:cd, charter_type:ct, duration:dur, num_guests:cng});
+  });
+
+  return {
+    guest: { first_name:fn, last_name:ln, is_returning:isRet },
+    arrival_date: arr,
+    departure_date: dep,
+    arrival_method: method,
+    num_guests: ng,
+    special_requests: sr,
+    notes: notes,
+    status: 'confirmed',
+    rooms,
+    charters,
+    boats: res.boats || [],
+    dietary: res.dietary || []
+  };
+}
+
+// ── Submit single reservation ────────────────────────────────────────────────
+async function submitOne(resId) {
+  const res = RESERVATIONS.find(r=>r.id===resId);
+  const btn = document.querySelector(`#card-${resId} .btn-submit`);
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  try {
+    const payload = buildPayload(res);
+    const resp = await fetch(`${API}/api/reservations`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (resp.status === 409) {
+      const conflicts = data.conflicts.map(c=>`${c.room}: ${c.guest}`).join(', ');
+      throw new Error(`Conflict: ${conflicts}`);
+    }
+    if (!resp.ok) throw new Error(data.error || 'Server error');
+
+    state[resId] = 'done';
+    const badge = document.querySelector(`#card-${resId} .status-badge`);
+    badge.className = 'status-badge status-done';
+    badge.textContent = `✅ Submitted (ID: ${data.id})`;
+    btn.textContent = '✓ Done';
+    toast(`✅ ${payload.guest.first_name} ${payload.guest.last_name} saved`);
+  } catch(e) {
+    state[resId] = 'error';
+    const badge = document.querySelector(`#card-${resId} .status-badge`);
+    badge.className = 'status-badge status-error';
+    badge.textContent = `❌ ${e.message}`;
+    btn.disabled = false;
+    btn.textContent = 'Retry';
+    toast(`❌ ${e.message}`, 'error');
+  }
+  updateCounts();
+}
+
+function skipOne(resId) {
+  state[resId] = 'skipped';
+  const badge = document.querySelector(`#card-${resId} .status-badge`);
+  badge.className = 'status-badge status-skipped';
+  badge.textContent = '⏭ Skipped';
+  updateCounts();
+}
+
+async function submitAll() {
+  const pending = RESERVATIONS.filter(r=>state[r.id]==='pending');
+  for (const r of pending) {
+    if (state[r.id]==='pending') await submitOne(r.id);
+    await new Promise(res=>setTimeout(res,300));
+  }
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function roomRows(res) {
+  return res.rooms.map((r,i) => `
+    <div class="room-row room-entry">
+      <select name="accommodation_id">
+        <option value="">— Select unit —</option>
+        ${ACCOM_OPTIONS.replace(`value="${r.accommodation_id}"`, `value="${r.accommodation_id}" selected`)}
+      </select>
+      <input type="number" name="room_guests" value="${r.num_guests}" min="0" max="10" placeholder="Guests" title="Guests in this unit">
+      <label><input type="checkbox" name="meal_package" ${r.meal_package?'checked':''}> Meals</label>
+    </div>`).join('');
+}
+
+function charterRows(res) {
+  if (!res.charters.length) return '<div class="charter-entry" style="display:none"><input name="charter_date" type="date"><select name="charter_type"><option value="fishing">Fishing</option></select><select name="duration"><option value="full_day">Full day</option><option value="half_day">Half day</option></select><input name="charter_guests" type="number" value="2" min="1" max="4"></div>';
+  return res.charters.map(c=>`
+    <div class="charter-row charter-entry">
+      <input name="charter_date" type="date" value="${c.charter_date}">
+      <select name="charter_type">
+        <option value="fishing" ${c.charter_type==='fishing'?'selected':''}>Fishing</option>
+        <option value="wildlife" ${c.charter_type==='wildlife'?'selected':''}>Wildlife</option>
+      </select>
+      <select name="duration">
+        <option value="full_day" ${c.duration==='full_day'?'selected':''}>Full day</option>
+        <option value="half_day" ${c.duration==='half_day'?'selected':''}>Half day</option>
+      </select>
+      <input name="charter_guests" type="number" value="${c.num_guests}" min="1" max="4" placeholder="Guests">
+    </div>`).join('');
+}
+
+function renderAll() {
+  const app = document.getElementById('app');
+  let html = '';
+  let currentWeek = '';
+
+  RESERVATIONS.forEach(res => {
+    if (res.week !== currentWeek) {
+      currentWeek = res.week;
+      html += `<div class="week-header">📅 ${res.week}</div>`;
+    }
+    const hasNotes = res.internal_notes.includes('❓');
+    html += `
+    <div class="res-card" id="card-${res.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <h3>${res.guest.first_name} ${res.guest.last_name} ${hasNotes?'<span class="note-tag">❓ verify</span>':''}</h3>
+        <span class="status-badge status-pending">⏳ Pending</span>
+      </div>
+      <div class="fields three">
+        <div class="field-group">
+          <label>First Name</label>
+          <input name="first_name" value="${res.guest.first_name}">
+        </div>
+        <div class="field-group">
+          <label>Last Name</label>
+          <input name="last_name" value="${res.guest.last_name}">
+        </div>
+        <div class="field-group">
+          <label>Returning guest?</label>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
+            <input type="checkbox" name="is_returning" ${res.guest.is_returning?'checked':''}> Yes
+          </label>
+        </div>
+      </div>
+      <div class="fields three" style="margin-top:10px">
+        <div class="field-group">
+          <label>Arrival Date</label>
+          <input name="arrival_date" type="date" value="${res.arrival_date}">
+        </div>
+        <div class="field-group">
+          <label>Departure Date</label>
+          <input name="departure_date" type="date" value="${res.departure_date}">
+        </div>
+        <div class="field-group">
+          <label>Arrival Method</label>
+          <select name="arrival_method">
+            <option value="boat" ${res.arrival_method==='boat'?'selected':''}>Boat pickup</option>
+            <option value="driving" ${res.arrival_method==='driving'?'selected':''}>Driving in</option>
+            <option value="float_plane" ${res.arrival_method==='float_plane'?'selected':''}>Float plane</option>
+            <option value="frances_barkley" ${res.arrival_method==='frances_barkley'?'selected':''}>MV Frances Barkley</option>
+          </select>
+        </div>
+      </div>
+      <div class="fields" style="margin-top:10px">
+        <div class="field-group">
+          <label>Total Guests</label>
+          <input name="num_guests" type="number" value="${res.num_guests}" min="0" max="30">
+        </div>
+        <div class="field-group">
+          <label>Special Requests / Dietary</label>
+          <input name="special_requests" value="${res.special_requests}">
+        </div>
+      </div>
+      <div class="rooms-section">
+        <h4>Units / Rooms</h4>
+        ${roomRows(res)}
+      </div>
+      ${res.charters.length ? `
+      <div class="charters-section" style="margin-top:10px">
+        <h4 style="font-size:0.8rem;font-weight:600;color:#4a5568;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Charters</h4>
+        ${charterRows(res)}
+      </div>` : ''}
+      <div class="fields full" style="margin-top:10px">
+        <div class="field-group">
+          <label>🔒 Internal Notes (staff only)</label>
+          <textarea name="internal_notes">${res.internal_notes}</textarea>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-submit" onclick="submitOne('${res.id}')">Submit ▶</button>
+        <button class="btn-skip" onclick="skipOne('${res.id}')">Skip</button>
+      </div>
+    </div>`;
+  });
+
+  app.innerHTML = html;
+  updateCounts();
+}
+
+renderAll();
+</script>
+</body>
+</html>
