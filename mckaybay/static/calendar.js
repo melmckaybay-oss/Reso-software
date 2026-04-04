@@ -14,6 +14,31 @@ const Calendar = (() => {
   let showContractorBoats = false;
   const tooltip           = () => document.getElementById("tooltip");
 
+  // Row tint colors by accommodation type
+  const ROW_BG = {
+    lodge_room:      { normal: "#f0f7ff", weekend: "#e3f0ff", today: "#fefce8" },
+    cabin:           { normal: "#f0fdf4", weekend: "#dcfce7", today: "#fefce8" },
+    suite:           { normal: "#faf5ff", weekend: "#f3e8ff", today: "#fefce8" },
+    charter_boat:    { normal: "#fff7ed", weekend: "#ffedd5", today: "#fefce8" },
+    contractor_boat: { normal: "#fdf4ff", weekend: "#fae8ff", today: "#fefce8" },
+  };
+
+  // Section header colors
+  const HEADER_BG = {
+    "Lodge Rooms":    { bg: "#1a535c", color: "#ffffff" },
+    "Cabins & Suite": { bg: "#166534", color: "#ffffff" },
+    "Charter Boats":  { bg: "#9a3412", color: "#ffffff" },
+  };
+
+  // Bar colors by accommodation type (overrides status color)
+  const BAR_TYPE_COLOR = {
+    lodge_room:      null,   // use status color (blue)
+    cabin:           "#0d9488",  // teal
+    suite:           "#7c3aed",  // purple
+    charter_boat:    "#ea580c",  // orange
+    contractor_boat: "#db2777",  // pink
+  };
+
   // ── Date helpers ──────────────────────────────────────────────────────────
 
   function today() {
@@ -25,7 +50,6 @@ const Calendar = (() => {
   }
 
   function isoDate(d) {
-    // Format as YYYY-MM-DD in local time (avoid UTC offset issues)
     const y  = d.getFullYear();
     const m  = String(d.getMonth() + 1).padStart(2, "0");
     const dy = String(d.getDate()).padStart(2, "0");
@@ -65,29 +89,54 @@ const Calendar = (() => {
 
     // ── Date header ──
     let html = `<div style="display:flex;position:sticky;top:0;z-index:25;background:white;border-bottom:2px solid #cbd5e1;">`;
-    html += `<div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:48px;position:sticky;left:0;z-index:26;background:#f8fafc;border-right:2px solid #d1d5db;flex-shrink:0;"></div>`;
+    html += `<div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:52px;position:sticky;left:0;z-index:26;background:#1a535c;border-right:2px solid #0f3a42;flex-shrink:0;"></div>`;
+
     days.forEach(d => {
       const isToday   = isoDate(d) === isoDate(t);
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const showMonth = d.getDate() === 1 || daysBetween(viewStart, d) === 0;
+      const isMonthStart = d.getDate() === 1 || daysBetween(viewStart, d) === 0;
       const dayName   = d.toLocaleDateString("en-CA", { weekday: "short" });
-      html += `<div class="date-header-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}" style="height:48px;">
-        <span style="font-size:9px;opacity:0.6;line-height:1">${showMonth ? d.toLocaleDateString("en-CA", { month: "short" }) : dayName}</span>
-        <span style="line-height:1;font-weight:${isWeekend||isToday?'700':'500'}">${d.getDate()}</span>
-      </div>`;
+
+      let headerBg = isToday ? "#fef08a" : isWeekend ? "#e5e7eb" : "#f8fafc";
+      let headerColor = isToday ? "#713f12" : "#374151";
+
+      if (isMonthStart) {
+        // Month marker cell — make it pop
+        html += `<div class="date-header-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}"
+          style="height:52px;background:${isToday ? "#fef08a" : "#1a535c"};border-left:3px solid ${isToday ? "#f59e0b" : "#0f3a42"};">
+          <span style="font-size:11px;font-weight:800;color:${isToday ? "#713f12" : "#ffffff"};line-height:1;letter-spacing:0.05em;text-transform:uppercase;">
+            ${d.toLocaleDateString("en-CA", { month: "short", year: "numeric" })}
+          </span>
+          <span style="line-height:1;font-weight:700;color:${isToday ? "#713f12" : "#ffffff"};font-size:13px;">${d.getDate()}</span>
+        </div>`;
+      } else {
+        html += `<div class="date-header-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}"
+          style="height:52px;background:${headerBg};">
+          <span style="font-size:9px;opacity:0.6;line-height:1;color:${headerColor}">${dayName}</span>
+          <span style="line-height:1;font-weight:${isWeekend||isToday?'700':'500'};color:${headerColor}">${d.getDate()}</span>
+        </div>`;
+      }
     });
     html += `</div>`;
 
     // ── Rows ──
+    let currentSection = null;
+
     rows.forEach(row => {
       if (row.isHeader) {
+        currentSection = row.label;
+        const hStyle = HEADER_BG[row.label] || { bg: "#374151", color: "#ffffff" };
         html += `<div style="display:flex;">
-          <div class="row-label section-header" style="min-width:${LABEL_W}px;width:${LABEL_W}px;">${row.label}</div>
+          <div class="row-label section-header"
+            style="min-width:${LABEL_W}px;width:${LABEL_W}px;background:${hStyle.bg};color:${hStyle.color};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border-right:3px solid rgba(0,0,0,0.2);">
+            ${row.label}
+          </div>
           <div style="display:flex;flex:1;">
             ${days.map(d => {
               const isToday   = isoDate(d) === isoDate(t);
               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-              return `<div style="min-width:${CELL_W}px;width:${CELL_W}px;height:40px;border-right:1px solid #e5e7eb;background:${isToday ? "#fefce8" : isWeekend ? "#f3f4f6" : "#f1f5f9"};flex-shrink:0;"></div>`;
+              const bg = isToday ? "#fef9c3" : isWeekend ? "#f3f4f6" : hStyle.bg + "22";
+              return `<div style="min-width:${CELL_W}px;width:${CELL_W}px;height:32px;border-right:1px solid #e5e7eb;background:${bg};flex-shrink:0;"></div>`;
             }).join("")}
           </div>
         </div>`;
@@ -95,18 +144,24 @@ const Calendar = (() => {
       }
 
       const accom    = row;
+      const accomType = accom.type || "lodge_room";
+      const rowColors = ROW_BG[accomType] || ROW_BG.lodge_room;
+
       const accomRes = reservations.filter(res =>
         res.rooms && res.rooms.some(r => r.accommodation_id === accom.id)
       );
 
       html += `<div style="display:flex;position:relative;">
-        <div class="row-label" style="min-width:${LABEL_W}px;width:${LABEL_W}px;" title="${accom.bed_config || ""}">${accom.name}</div>
+        <div class="row-label"
+          style="min-width:${LABEL_W}px;width:${LABEL_W}px;background:${rowColors.normal};border-right:3px solid ${HEADER_BG[currentSection]?.bg || '#e5e7eb'}33;"
+          title="${accom.bed_config || ""}">${accom.name}</div>
         <div style="display:flex;position:relative;flex:1;" id="row-${accom.id}">
           ${days.map(d => {
             const isToday   = isoDate(d) === isoDate(t);
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+            const bg = isToday ? rowColors.today : isWeekend ? rowColors.weekend : rowColors.normal;
             return `<div class="cal-cell${isToday ? " today-col" : ""}${isWeekend ? " weekend" : ""}"
-              style="min-width:${CELL_W}px;width:${CELL_W}px;flex-shrink:0;"
+              style="min-width:${CELL_W}px;width:${CELL_W}px;flex-shrink:0;background:${bg};"
               data-date="${isoDate(d)}" data-accom="${accom.id}"
               onclick="Calendar.cellClick('${isoDate(d)}', ${accom.id})"></div>`;
           }).join("")}
@@ -123,6 +178,8 @@ const Calendar = (() => {
     let html       = "";
     const startISO = isoDate(days[0]);
     const endISO   = isoDate(addDays(days[days.length - 1], 1));
+    const accomType = accom.type || "lodge_room";
+    const typeColor = BAR_TYPE_COLOR[accomType];
 
     accomRes.forEach(res => {
       const arr = res.arrival_date;
@@ -138,12 +195,18 @@ const Calendar = (() => {
       const left  = offsetDays * CELL_W;
       const width = spanDays   * CELL_W - 3;
       const name  = `${res.first_name} ${res.last_name}`;
-
-      // Flag dietary requirements
       const hasDiet = res.dietary && res.dietary.length > 0;
 
-      html += `<div class="res-bar status-${res.status}"
-        style="left:${left}px;width:${width}px;"
+      // Use type color if available, otherwise fall back to status class
+      const styleOverride = typeColor
+        ? `style="left:${left}px;width:${width}px;background:${typeColor};border-color:${typeColor}cc;"`
+        : `style="left:${left}px;width:${width}px;"`;
+
+      const classAttr = typeColor
+        ? `class="res-bar"`
+        : `class="res-bar status-${res.status}"`;
+
+      html += `<div ${classAttr} ${styleOverride}
         data-res-id="${res.id}"
         onmouseenter="Calendar.showTooltip(event,${res.id})"
         onmouseleave="Calendar.hideTooltip()"
@@ -226,8 +289,6 @@ const Calendar = (() => {
       reservations = [];
     }
 
-    const inHouseCount = new Set(reservations.flatMap(r => (r.rooms || []).map(rm => rm.accommodation_id))).size;
-
     container.innerHTML = `
       <!-- Controls bar -->
       <div class="flex items-center gap-2 mb-3 flex-wrap">
@@ -264,6 +325,9 @@ const Calendar = (() => {
         ${["pending","confirmed","checked_in","checked_out"].map(s =>
           `<span class="res-bar status-${s}" style="position:static;height:22px;font-size:11px;border-radius:3px;box-shadow:none;padding:0 8px">${s.replace("_"," ")}</span>`
         ).join("")}
+        <span style="height:22px;font-size:11px;border-radius:3px;padding:0 8px;background:#0d9488;color:white;display:inline-flex;align-items:center;">cabin</span>
+        <span style="height:22px;font-size:11px;border-radius:3px;padding:0 8px;background:#7c3aed;color:white;display:inline-flex;align-items:center;">suite</span>
+        <span style="height:22px;font-size:11px;border-radius:3px;padding:0 8px;background:#ea580c;color:white;display:inline-flex;align-items:center;">charter</span>
         <span class="text-xs text-gray-400 ml-auto">${reservations.length} reservation${reservations.length !== 1 ? "s" : ""} in view</span>
       </div>
 
