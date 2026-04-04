@@ -65,6 +65,8 @@ def error_response(handler, message, status=400):
 def serve_static(handler, path):
     if path == "/" or path == "":
         path = "/index.html"
+    if path in ("/batch-entry", "/batch-entry/"):
+        path = "/batch_entry.html"
     filepath = os.path.join(STATIC_DIR, path.lstrip("/"))
     if not os.path.isfile(filepath):
         filepath = os.path.join(STATIC_DIR, "index.html")
@@ -509,18 +511,6 @@ class Handler(BaseHTTPRequestHandler):
         qs         = parse_qs(parsed.query)
         path_parts = [p for p in path.split("/") if p]
         body       = self._read_body() if method in ("POST", "PUT", "PATCH") else {}
-
-        # Batch entry tool — serve directly before static fallback
-        if path == "/batch-entry":
-            filepath = os.path.join(STATIC_DIR, "batch_entry.html")
-            with open(filepath, "rb") as f:
-                body_bytes = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.send_header("Content-Length", len(body_bytes))
-            self.end_headers()
-            self.wfile.write(body_bytes)
-            return
 
         # Static files — must check /api/ (with slash) so /api.js is served as a file
         if not path.startswith("/api/") and path != "/api":
