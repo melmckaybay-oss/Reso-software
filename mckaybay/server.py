@@ -4,13 +4,10 @@ McKay Bay Lodge — Reservation Software
 Run with:  python3 server.py
 Then open: http://localhost:8080
 """
-import glob
 import json
 import os
 import re
-import shutil
 import sys
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -157,19 +154,12 @@ def _save_reservation_children(db, rid, d):
     db.execute("DELETE FROM charter_bookings WHERE reservation_id=?",          (rid,))
 
     for room in d.get("rooms", []):
-        custom_rate = room.get("custom_rate")
-        if custom_rate is not None:
-            try:
-                custom_rate = float(custom_rate)
-            except (TypeError, ValueError):
-                custom_rate = None
         db.execute(
-            "INSERT INTO reservation_rooms (reservation_id,accommodation_id,num_guests,meal_package,extra_boats,single_supplement,custom_rate) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO reservation_rooms (reservation_id,accommodation_id,num_guests,meal_package,extra_boats,single_supplement) VALUES (?,?,?,?,?,?)",
             (rid, room["accommodation_id"], room.get("num_guests", 1),
              1 if room.get("meal_package", True) else 0,
              room.get("extra_boats", 0),
-             1 if room.get("single_supplement", False) else 0,
-             custom_rate)
+             1 if room.get("single_supplement", False) else 0)
         )
     for diet in d.get("dietary", []):
         db.execute(
@@ -227,8 +217,7 @@ def handle_reservations(handler, method, path_parts, qs, body):
         db.close()
         if not res:
             return error_response(handler, "Not found", 404)
-        quote = calc_quote(res["rooms"], res["arrival_date"], res["departure_date"],
-                           res["charters"], pst_exempt=bool(res.get("pst_exempt")))
+        quote = calc_quote(res["rooms"], res["arrival_date"], res["departure_date"], res["charters"])
         return json_response(handler, quote)
 
     # POST /api/reservations
@@ -256,23 +245,13 @@ def handle_reservations(handler, method, path_parts, qs, body):
 
         cur = db.execute(
             """INSERT INTO reservations
-<<<<<<< Updated upstream
                (guest_id,status,arrival_date,departure_date,arrival_time,arrival_method,num_guests,special_requests,mobility,cc_on_file,how_heard)
-=======
-               (guest_id,status,arrival_date,departure_date,arrival_time,arrival_method,num_guests,special_requests,how_heard,cc_on_file,pst_exempt)
->>>>>>> Stashed changes
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (guest_id, d.get("status", "confirmed"),
              d["arrival_date"], d["departure_date"],
              d.get("arrival_time"), d.get("arrival_method"),
-<<<<<<< Updated upstream
              d.get("num_guests", 1), d.get("special_requests"),
              d.get("mobility"), d.get("cc_on_file", 0), d.get("how_heard"))
-=======
-             d.get("num_guests", 1), d.get("special_requests"), d.get("how_heard"),
-             1 if d.get("cc_on_file") else 0,
-             1 if d.get("pst_exempt") else 0)
->>>>>>> Stashed changes
         )
         rid = cur.lastrowid
         _save_reservation_children(db, rid, d)
@@ -297,21 +276,11 @@ def handle_reservations(handler, method, path_parts, qs, body):
 
         db.execute(
             """UPDATE reservations SET status=?,arrival_date=?,departure_date=?,arrival_time=?,
-<<<<<<< Updated upstream
                arrival_method=?,num_guests=?,special_requests=?,mobility=?,cc_on_file=?,how_heard=? WHERE id=?""",
             (d.get("status", "confirmed"), d["arrival_date"], d["departure_date"],
              d.get("arrival_time"), d.get("arrival_method"),
              d.get("num_guests", 1), d.get("special_requests"),
              d.get("mobility"), d.get("cc_on_file", 0), d.get("how_heard"), rid)
-=======
-               arrival_method=?,num_guests=?,special_requests=?,how_heard=?,
-               cc_on_file=?,pst_exempt=? WHERE id=?""",
-            (d.get("status", "confirmed"), d["arrival_date"], d["departure_date"],
-             d.get("arrival_time"), d.get("arrival_method"),
-             d.get("num_guests", 1), d.get("special_requests"), d.get("how_heard"),
-             1 if d.get("cc_on_file") else 0,
-             1 if d.get("pst_exempt") else 0, rid)
->>>>>>> Stashed changes
         )
         _save_reservation_children(db, rid, d)
         db.commit()
@@ -517,97 +486,6 @@ def handle_reservation_notes(handler, method, path_parts, qs, body):
     return error_response(handler, "Method not allowed", 405)
 
 
-def handle_quote(handler, method, path_parts, qs, body):
-    """POST /api/quote/preview — calculate a price quote without saving."""
-    if method != "POST":
-        return error_response(handler, "Method not allowed", 405)
-    arrival   = body.get("arrival_date")
-    departure = body.get("departure_date")
-    if not arrival or not departure:
-        return error_response(handler, "arrival_date and departure_date required")
-
-    # Rooms from the form include accommodation_id; look up name/type from DB
-    db    = get_db()
-    rooms = []
-    for r in body.get("rooms", []):
-        accom_id = r.get("accommodation_id")
-        row = db.execute("SELECT name, accommodation_type FROM accommodations WHERE id=?",
-                         (accom_id,)).fetchone() if accom_id else None
-        rooms.append({
-            "accommodation_name": row["name"] if row else r.get("accommodation_name", ""),
-            "accommodation_type": row["accommodation_type"] if row else r.get("accommodation_type", "lodge_room"),
-            "num_guests":        r.get("num_guests", 1),
-            "meal_package":      r.get("meal_package", True),
-            "extra_boats":       r.get("extra_boats", 0),
-            "single_supplement": r.get("single_supplement", False),
-            "custom_rate":       r.get("custom_rate"),
-        })
-    db.close()
-
-    charters   = body.get("charters", [])
-    pst_exempt = bool(body.get("pst_exempt", False))
-    try:
-        quote = calc_quote(rooms, arrival, departure, charters, pst_exempt=pst_exempt)
-        return json_response(handler, quote)
-    except Exception as e:
-        return error_response(handler, str(e))
-
-
-def handle_backup(handler, method, path_parts, qs, body):
-    """
-    GET /api/backup/create   — copy DB to timestamped backup, keep last 14
-    GET /api/backup/list     — list available backup filenames
-    GET /api/backup/download?file=FILENAME — stream a backup file
-    """
-    if method != "GET":
-        return error_response(handler, "Method not allowed", 405)
-
-    action = path_parts[2] if len(path_parts) > 2 else ""
-
-    # Locate the database file
-    from database import DB_PATH
-    db_dir     = os.path.dirname(DB_PATH)
-    backup_dir = os.path.join(db_dir, "backups")
-    os.makedirs(backup_dir, exist_ok=True)
-
-    if action == "create":
-        stamp   = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
-        dest    = os.path.join(backup_dir, f"mckaybay_{stamp}.db")
-        shutil.copy2(DB_PATH, dest)
-        # Keep only the 14 most recent backups
-        backups = sorted(glob.glob(os.path.join(backup_dir, "mckaybay_*.db")))
-        for old in backups[:-14]:
-            try:
-                os.remove(old)
-            except OSError:
-                pass
-        return json_response(handler, {"status": "ok", "file": os.path.basename(dest)})
-
-    if action == "list":
-        backups = sorted(glob.glob(os.path.join(backup_dir, "mckaybay_*.db")), reverse=True)
-        return json_response(handler, {"backups": [os.path.basename(b) for b in backups]})
-
-    if action == "download":
-        filename = qs.get("file", [None])[0]
-        if not filename or "/" in filename or ".." in filename:
-            return error_response(handler, "Invalid filename")
-        filepath = os.path.join(backup_dir, filename)
-        if not os.path.isfile(filepath):
-            return error_response(handler, "File not found", 404)
-        with open(filepath, "rb") as f:
-            data = f.read()
-        handler.send_response(200)
-        handler.send_header("Content-Type", "application/octet-stream")
-        handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
-        handler.send_header("Content-Length", len(data))
-        handler.send_header("Access-Control-Allow-Origin", "*")
-        handler.end_headers()
-        handler.wfile.write(data)
-        return
-
-    return error_response(handler, "Unknown backup action", 404)
-
-
 # ── Main request handler ───────────────────────────────────────────────────────
 
 class Handler(BaseHTTPRequestHandler):
@@ -653,10 +531,6 @@ class Handler(BaseHTTPRequestHandler):
                 return handle_daily(self, method, path_parts, qs, body)
             if resource == "staff":
                 return handle_staff(self, method, path_parts, qs, body)
-            if resource == "quote":
-                return handle_quote(self, method, path_parts, qs, body)
-            if resource == "backup":
-                return handle_backup(self, method, path_parts, qs, body)
 
         error_response(self, "Not found", 404)
 
