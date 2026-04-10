@@ -41,13 +41,14 @@ const App = (() => {
       </div>`;
   }
 
-  // ── Reservation detail panel (quick view before edit) ──────────────────────
+  // ── Reservation detail panel ───────────────────────────────────────────────
 
   async function openReservation(resId) {
     openModal(`<div class="p-10 text-center text-gray-400">Loading…</div>`);
     try {
       const res   = await API.reservation(resId);
       const quote = await API.quote(resId).catch(() => null);
+      await Charges.load(resId);
       showDetailPanel(res, quote);
     } catch (e) {
       document.getElementById("modal-content").innerHTML =
@@ -69,6 +70,10 @@ const App = (() => {
       checked_out: "bg-gray-100 text-gray-700",
       cancelled:   "bg-red-100 text-red-700",
     }[res.status] || "bg-gray-100 text-gray-700";
+
+    const chargesTotal = Charges.totalCharges();
+    const accommodationTotal = quote ? quote.grand_total : 0;
+    const grandTotal = accommodationTotal + chargesTotal;
 
     document.getElementById("modal-content").innerHTML = `
       <div class="p-6">
@@ -147,26 +152,43 @@ const App = (() => {
           📝 ${res.special_requests}
         </div>` : ""}
 
-        <!-- Quote -->
+        <!-- Accommodation Quote -->
         ${quote ? `
-        <div class="mb-5 border-t pt-4">
-          <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Estimated Total</div>
+        <div class="mb-4 border-t pt-4">
+          <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Accommodation Total</div>
           <table class="w-full text-sm">
             ${quote.lines.map(l => `
               <tr class="border-b border-gray-100">
                 <td class="py-1 text-gray-600">${l.description}</td>
                 <td class="text-right py-1 font-medium">$${l.total.toFixed(2)}</td>
               </tr>`).join("")}
-            <tr class="font-bold">
-              <td class="pt-2">Total incl. tax (${quote.nights} nights)</td>
-              <td class="text-right pt-2 text-green-700 text-base">$${quote.grand_total.toFixed(2)}</td>
+            <tr class="font-semibold text-gray-700">
+              <td class="pt-2">Accommodation subtotal (${quote.nights} nights)</td>
+              <td class="text-right pt-2">$${quote.grand_total.toFixed(2)}</td>
             </tr>
           </table>
         </div>` : ""}
 
+        <!-- Room Charges -->
+        ${Charges.renderChargesSection(res.id)}
+
+        <!-- Grand Total -->
+        ${quote || chargesTotal > 0 ? `
+        <div style="background:#1a535c;color:white;border-radius:10px;padding:14px 16px;margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.8;margin-bottom:4px;">
+            <span>Accommodation</span><span>$${accommodationTotal.toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.8;margin-bottom:8px;">
+            <span>Room charges</span><span>$${chargesTotal.toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;
+                      border-top:1px solid rgba(255,255,255,0.3);padding-top:8px;">
+            <span>TOTAL DUE</span><span>$${grandTotal.toFixed(2)}</span>
+          </div>
+        </div>` : ""}
+
         <!-- Action buttons -->
-        <div class="flex items-center justify-between pt-4 border-t gap-3 flex-wrap">
-          <!-- Quick status change -->
+        <div class="flex items-center justify-between pt-4 border-t gap-3 flex-wrap mt-4">
           <div class="flex gap-2 flex-wrap">
             ${res.status !== "checked_in"  ? `<button class="btn btn-success text-xs py-1.5" onclick="App.changeStatus(${res.id},'checked_in')">✓ Check In</button>` : ""}
             ${res.status === "checked_in"  ? `<button class="btn btn-secondary text-xs py-1.5" onclick="App.changeStatus(${res.id},'checked_out')">Check Out</button>` : ""}
@@ -179,7 +201,7 @@ const App = (() => {
           </div>
         </div>
 
-        <!-- Internal notes (staff only — not visible to guest) -->
+        <!-- Internal notes -->
         <div class="mt-5 pt-4 border-t">
           <div class="flex items-center justify-between mb-2">
             <div class="text-xs font-semibold text-gray-500 uppercase">🔒 Internal Notes <span class="font-normal text-gray-400">(staff only — not sent to guest)</span></div>
@@ -187,7 +209,7 @@ const App = (() => {
           </div>
           <textarea id="res-notes-${res.id}" rows="4"
             style="font-size:13px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;resize:vertical;"
-            placeholder="Add internal notes here… e.g. John wants lunch at 1pm on Tuesday, requests extra towels, prefers room facing the water, etc."
+            placeholder="Add internal notes here…"
           >${res.notes || ""}</textarea>
           <p class="text-xs text-gray-400 mt-1">These notes are visible to staff only and will never appear on guest-facing emails.</p>
         </div>
@@ -253,24 +275,176 @@ const App = (() => {
       await API.saveReservationNotes(resId, ta.value);
       ta.style.background = "#d1fae5";
       setTimeout(() => { ta.style.background = "#fffbeb"; }, 1000);
-      const cached = reservations ? reservations.find(r => r.id === resId) : null;
-      if (cached) cached.notes = ta.value;
     } catch(e) { alert("Could not save notes: " + e.message); }
   }
 
   async function openEmailForReservation(resId) {
     closeModal();
     App.showView("emails");
-    // Wait for emails view to render then pre-select this reservation
     setTimeout(() => {
       if (typeof Emails !== "undefined") Emails.selectReservation(resId);
     }, 400);
+  }
+
+  // ── Voice Input ───────────────────────────────────────────────────────────
+
+  let _voiceRecognition = null;
+  let _voiceActive = false;
+
+  function startVoiceInput(buttonId) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in this browser. Please use Chrome.");
+      return;
+    }
+
+    const btn = document.getElementById(buttonId);
+
+    if (_voiceActive) {
+      _voiceRecognition?.stop();
+      _voiceActive = false;
+      if (btn) { btn.textContent = "🎤"; btn.style.background = "#f1f5f9"; }
+      return;
+    }
+
+    _voiceRecognition = new SpeechRecognition();
+    _voiceRecognition.continuous = false;
+    _voiceRecognition.interimResults = false;
+    _voiceRecognition.lang = "en-CA";
+
+    _voiceActive = true;
+    if (btn) { btn.textContent = "⏹ Stop"; btn.style.background = "#fecaca"; }
+
+    _voiceRecognition.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript;
+      _voiceActive = false;
+      if (btn) { btn.textContent = "🎤"; btn.style.background = "#f1f5f9"; }
+      await parseVoiceInput(transcript);
+    };
+
+    _voiceRecognition.onerror = (e) => {
+      _voiceActive = false;
+      if (btn) { btn.textContent = "🎤"; btn.style.background = "#f1f5f9"; }
+      console.error("Voice error:", e.error);
+      if (e.error !== "no-speech") alert("Voice input error: " + e.error);
+    };
+
+    _voiceRecognition.onend = () => {
+      _voiceActive = false;
+      if (btn) { btn.textContent = "🎤"; btn.style.background = "#f1f5f9"; }
+    };
+
+    _voiceRecognition.start();
+  }
+
+  async function parseVoiceInput(transcript) {
+    // Show what was heard
+    const statusEl = document.getElementById("voice-status");
+    if (statusEl) {
+      statusEl.textContent = `Heard: "${transcript}" — Processing…`;
+      statusEl.style.color = "#6b7280";
+    }
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: `Extract reservation details from this voice input and return ONLY valid JSON, no other text:
+"${transcript}"
+
+Return this exact JSON structure (use null for any field not mentioned):
+{
+  "first_name": null,
+  "last_name": null,
+  "num_guests": null,
+  "arrival_date": null,
+  "departure_date": null,
+  "rooms": [],
+  "meal_package": null,
+  "arrival_method": null,
+  "notes": null
+}
+
+Rules:
+- arrival_date and departure_date must be YYYY-MM-DD format. Current year is 2026.
+- rooms is an array of room names mentioned (e.g. ["Room 4", "Room 8"])
+- meal_package is true if "all meals" or "meal package" mentioned, false if "no meals" mentioned
+- arrival_method: "boat", "road", "float_plane", or "frances_barkley"
+- If only one date mentioned, use it as arrival_date
+- num_guests is a number`
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || "";
+
+      let parsed;
+      try {
+        parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      } catch(e) {
+        throw new Error("Could not parse response");
+      }
+
+      fillFormFromVoice(parsed, transcript);
+
+    } catch(e) {
+      if (statusEl) {
+        statusEl.textContent = `Could not process: "${transcript}" — please fill in manually`;
+        statusEl.style.color = "#ef4444";
+      }
+      console.error("Voice parse error:", e);
+    }
+  }
+
+  function fillFormFromVoice(parsed, originalTranscript) {
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== null && val !== undefined) el.value = val;
+    };
+
+    if (parsed.first_name) setVal("f-first", parsed.first_name);
+    if (parsed.last_name)  setVal("f-last",  parsed.last_name);
+    if (parsed.num_guests) setVal("f-numguests", parsed.num_guests);
+    if (parsed.arrival_date)   setVal("f-arrival",   parsed.arrival_date);
+    if (parsed.departure_date) setVal("f-departure",  parsed.departure_date);
+    if (parsed.arrival_method) setVal("f-arrmethod",  parsed.arrival_method);
+    if (parsed.notes) setVal("f-special", parsed.notes);
+
+    // Handle meal package checkbox
+    if (parsed.meal_package !== null && parsed.meal_package !== undefined) {
+      // Update first room's meal package
+      if (typeof Form !== "undefined" && Form.updateRoom) {
+        Form.updateRoom(0, "meal_package", parsed.meal_package);
+      }
+    }
+
+    const statusEl = document.getElementById("voice-status");
+    if (statusEl) {
+      const filled = [];
+      if (parsed.first_name || parsed.last_name) filled.push("name");
+      if (parsed.arrival_date) filled.push("arrival");
+      if (parsed.departure_date) filled.push("departure");
+      if (parsed.num_guests) filled.push("guests");
+      if (parsed.rooms?.length) filled.push("rooms (set manually)");
+
+      statusEl.textContent = filled.length
+        ? `✅ Filled in: ${filled.join(", ")} — please review and confirm`
+        : `⚠ Could not extract details from: "${originalTranscript}"`;
+      statusEl.style.color = filled.length ? "#16a34a" : "#f59e0b";
+    }
   }
 
   return {
     showView, showLoading, showError,
     openReservation, openNewReservation, editReservation, changeStatus,
     closeModal, init, saveResNotes, openEmailForReservation,
+    startVoiceInput, parseVoiceInput, fillFormFromVoice,
   };
 })();
 

@@ -57,8 +57,16 @@ const Form = (() => {
       <div class="p-6">
         <div class="flex items-center justify-between mb-5">
           <h2 class="text-xl font-bold text-gray-900">${title}</h2>
-          <button onclick="App.closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="voice-btn" onclick="App.startVoiceInput('voice-btn')" title="Voice input — speak your reservation details"
+              style="background:#f1f5f9;border:1px solid #d1d5db;border-radius:8px;padding:6px 12px;
+                     font-size:16px;cursor:pointer;transition:background 0.2s;">🎤</button>
+            <button onclick="App.closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          </div>
         </div>
+
+        <!-- Voice status -->
+        <div id="voice-status" style="font-size:12px;color:#6b7280;margin-bottom:8px;min-height:16px;padding:4px 8px;background:#f8fafc;border-radius:6px;"></div>
 
         <!-- Guest -->
         <div class="mb-5 p-4 bg-blue-50 rounded-lg">
