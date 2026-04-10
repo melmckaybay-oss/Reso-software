@@ -36,7 +36,8 @@ const Charges = (() => {
     currentResId = resId;
     try {
       const resp = await fetch(`/api/charges?reservation_id=${resId}`);
-      charges = await resp.json();
+      const data = await resp.json();
+      charges = Array.isArray(data) ? data : [];
     } catch(e) {
       charges = [];
     }
