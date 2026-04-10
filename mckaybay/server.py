@@ -531,6 +531,8 @@ class Handler(BaseHTTPRequestHandler):
                 return handle_daily(self, method, path_parts, qs, body)
             if resource == "staff":
                 return handle_staff(self, method, path_parts, qs, body)
+            if resource == "charges":
+                return handle_charges(self, method, path_parts, qs, body)
 
         error_response(self, "Not found", 404)
 
