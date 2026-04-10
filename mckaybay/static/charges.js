@@ -80,7 +80,7 @@ const Charges = (() => {
   }
 
   function totalCharges() {
-    return charges.reduce((s, c) => s + (c.total || 0), 0);
+    return charges.reduce((s, c) => s + parseFloat(c.total || 0), 0);
   }
 
   function renderChargesSection(resId) {
@@ -148,24 +148,32 @@ const Charges = (() => {
         </tr>
       </thead>
       <tbody>
-        ${charges.map(c => `
+        ${charges.map(c => {
+          const desc     = c.description || c.item || "—";
+          const qty      = parseFloat(c.qty || c.quantity || 1);
+          const unit     = parseFloat(c.unit_price || c.price || 0);
+          const sub      = parseFloat(c.subtotal || (qty * unit) || 0);
+          const taxAmt   = parseFloat(c.tax_amount || c.tax || 0);
+          const total    = parseFloat(c.total || (sub + taxAmt) || 0);
+          const taxLabel = c.tax_label || c.tax_desc || "";
+          return `
         <tr style="border-bottom:1px solid #f3f4f6;">
           <td style="padding:6px 8px;">
-            <div style="font-weight:600;">${c.description}</div>
-            <div style="color:#9ca3af;font-size:10px;">${c.tax_label||""}</div>
+            <div style="font-weight:600;">${desc}</div>
+            <div style="color:#9ca3af;font-size:10px;">${taxLabel}</div>
           </td>
-          <td style="text-align:center;padding:6px 4px;">${c.qty}</td>
-          <td style="text-align:right;padding:6px 4px;">$${parseFloat(c.unit_price).toFixed(2)}</td>
-          <td style="text-align:right;padding:6px 4px;">$${parseFloat(c.subtotal).toFixed(2)}</td>
-          <td style="text-align:right;padding:6px 4px;color:#6b7280;">$${parseFloat(c.tax_amount).toFixed(2)}</td>
-          <td style="text-align:right;padding:6px 8px;font-weight:700;color:#1a535c;">$${parseFloat(c.total).toFixed(2)}</td>
+          <td style="text-align:center;padding:6px 4px;">${qty}</td>
+          <td style="text-align:right;padding:6px 4px;">$${unit.toFixed(2)}</td>
+          <td style="text-align:right;padding:6px 4px;">$${sub.toFixed(2)}</td>
+          <td style="text-align:right;padding:6px 4px;color:#6b7280;">$${taxAmt.toFixed(2)}</td>
+          <td style="text-align:right;padding:6px 8px;font-weight:700;color:#1a535c;">$${total.toFixed(2)}</td>
           <td style="padding:6px 4px;">
             <button onclick="Charges.deleteAndRefresh(${c.id},${resId})"
               style="color:#d1d5db;border:none;background:none;cursor:pointer;font-size:15px;padding:0;"
               onmouseover="this.style.color='#ef4444'"
               onmouseout="this.style.color='#d1d5db'">×</button>
           </td>
-        </tr>`).join("")}
+        </tr>`;}).join("")}
       </tbody>
     </table>`;
   }
