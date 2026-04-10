@@ -293,7 +293,12 @@ const Charges = (() => {
   async function refreshChargesUI(resId) {
     await load(resId);
     const section = document.getElementById("charges-section");
-    if (section) section.outerHTML = renderChargesSection(resId);
+    if (section) {
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = renderChargesSection(resId);
+      section.replaceWith(wrapper.firstElementChild);
+    }
+    if (typeof App !== "undefined" && App.updateGrandTotal) App.updateGrandTotal();
   }
 
   return {

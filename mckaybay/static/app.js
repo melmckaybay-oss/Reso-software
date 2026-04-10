@@ -176,14 +176,15 @@ const App = (() => {
         ${quote || chargesTotal > 0 ? `
         <div style="background:#1a535c;color:white;border-radius:10px;padding:14px 16px;margin-top:16px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.8;margin-bottom:4px;">
-            <span>Accommodation</span><span>$${accommodationTotal.toFixed(2)}</span>
+            <span>Accommodation</span>
+            <span id="accommodation-total" data-total="${accommodationTotal.toFixed(2)}">$${accommodationTotal.toFixed(2)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.8;margin-bottom:8px;">
-            <span>Room charges</span><span>$${chargesTotal.toFixed(2)}</span>
+            <span>Room charges</span><span id="charges-total-display">$${chargesTotal.toFixed(2)}</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;
                       border-top:1px solid rgba(255,255,255,0.3);padding-top:8px;">
-            <span>TOTAL DUE</span><span>$${grandTotal.toFixed(2)}</span>
+            <span>TOTAL DUE</span><span id="grand-total-display">$${grandTotal.toFixed(2)}</span>
           </div>
         </div>` : ""}
 
@@ -214,6 +215,17 @@ const App = (() => {
           <p class="text-xs text-gray-400 mt-1">These notes are visible to staff only and will never appear on guest-facing emails.</p>
         </div>
       </div>`;
+  }
+
+  function updateGrandTotal() {
+    const chargesTotal = Charges.totalCharges();
+    const accommodationEl = document.getElementById("accommodation-total");
+    const chargesEl = document.getElementById("charges-total-display");
+    const grandEl = document.getElementById("grand-total-display");
+    if (!grandEl) return;
+    const accommodationTotal = parseFloat(accommodationEl?.dataset.total || 0);
+    if (chargesEl) chargesEl.textContent = "$" + chargesTotal.toFixed(2);
+    if (grandEl) grandEl.textContent = "$" + (accommodationTotal + chargesTotal).toFixed(2);
   }
 
   function daysBetween(isoA, isoB) {
@@ -444,7 +456,7 @@ Rules:
     showView, showLoading, showError,
     openReservation, openNewReservation, editReservation, changeStatus,
     closeModal, init, saveResNotes, openEmailForReservation,
-    startVoiceInput, parseVoiceInput, fillFormFromVoice,
+    startVoiceInput, parseVoiceInput, fillFormFromVoice, updateGrandTotal,
   };
 })();
 
