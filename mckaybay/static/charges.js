@@ -290,7 +290,8 @@ const Charges = (() => {
     refreshChargesUI(resId);
   }
 
-  function refreshChargesUI(resId) {
+  async function refreshChargesUI(resId) {
+    await load(resId);
     const section = document.getElementById("charges-section");
     if (section) section.outerHTML = renderChargesSection(resId);
   }
