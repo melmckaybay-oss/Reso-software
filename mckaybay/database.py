@@ -139,6 +139,25 @@ def init_db():
         )
     """)
 
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS room_charges (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            reservation_id INTEGER NOT NULL,
+            category       TEXT NOT NULL DEFAULT 'misc',
+            description    TEXT NOT NULL,
+            qty            REAL NOT NULL DEFAULT 1,
+            unit_price     REAL NOT NULL DEFAULT 0,
+            tax_rate       REAL NOT NULL DEFAULT 0.05,
+            tax_label      TEXT NOT NULL DEFAULT 'GST 5%',
+            subtotal       REAL NOT NULL DEFAULT 0,
+            tax_amount     REAL NOT NULL DEFAULT 0,
+            total          REAL NOT NULL DEFAULT 0,
+            created_at     TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
+        )
+    """)
+
     # Seed accommodation data if empty
     c.execute("SELECT COUNT(*) FROM accommodations")
     if c.fetchone()[0] == 0:

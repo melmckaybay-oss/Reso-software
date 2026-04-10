@@ -555,3 +555,48 @@ if __name__ == "__main__":
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nServer stopped.")
+
+
+def handle_charges(handler, method, path_parts, qs, body):
+    db = get_db()
+
+    # GET /api/charges?reservation_id=X
+    if method == "GET" and len(path_parts) == 2:
+        res_id = qs.get("reservation_id", [None])[0]
+        if not res_id:
+            db.close()
+            return error_response(handler, "reservation_id required")
+        rows = db.execute(
+            "SELECT * FROM room_charges WHERE reservation_id=? ORDER BY created_at",
+            (int(res_id),)
+        ).fetchall()
+        db.close()
+        return json_response(handler, rows_to_list(rows))
+
+    # POST /api/charges
+    if method == "POST" and len(path_parts) == 2:
+        d = body
+        cur = db.execute(
+            """INSERT INTO room_charges
+               (reservation_id, category, description, qty, unit_price, tax_rate, tax_label, subtotal, tax_amount, total)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (d["reservation_id"], d.get("category","misc"), d.get("description",""),
+             d.get("qty",1), d.get("unit_price",0), d.get("tax_rate",0.05),
+             d.get("tax_label","GST 5%"), d.get("subtotal",0),
+             d.get("tax_amount",0), d.get("total",0))
+        )
+        db.commit()
+        row = row_to_dict(db.execute("SELECT * FROM room_charges WHERE id=?", (cur.lastrowid,)).fetchone())
+        db.close()
+        return json_response(handler, row, 201)
+
+    # DELETE /api/charges/:id
+    if method == "DELETE" and len(path_parts) == 3:
+        cid = int(path_parts[2])
+        db.execute("DELETE FROM room_charges WHERE id=?", (cid,))
+        db.commit()
+        db.close()
+        return json_response(handler, {"deleted": cid})
+
+    db.close()
+    error_response(handler, "Not found", 404)
