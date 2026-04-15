@@ -549,6 +549,31 @@ if __name__ == "__main__":
     if _db_dir:
         _os.makedirs(_db_dir, exist_ok=True)
     init_db()
+    # Ensure room_charges table exists (migration for existing databases)
+    try:
+        _conn = get_db()
+        _conn.execute("""
+            CREATE TABLE IF NOT EXISTS room_charges (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                reservation_id INTEGER NOT NULL,
+                category       TEXT NOT NULL DEFAULT 'misc',
+                description    TEXT NOT NULL,
+                qty            REAL NOT NULL DEFAULT 1,
+                unit_price     REAL NOT NULL DEFAULT 0,
+                tax_rate       REAL NOT NULL DEFAULT 0.05,
+                tax_label      TEXT NOT NULL DEFAULT 'GST 5%',
+                subtotal       REAL NOT NULL DEFAULT 0,
+                tax_amount     REAL NOT NULL DEFAULT 0,
+                total          REAL NOT NULL DEFAULT 0,
+                created_at     TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
+            )
+        """)
+        _conn.commit()
+        _conn.close()
+        print("   ✓ room_charges table ready")
+    except Exception as _e:
+        print(f"   ⚠ room_charges migration: {_e}")
     print(f"\n🏔  McKay Bay Lodge — Reservation Software")
     print(f"   Running at http://localhost:{PORT}")
     print(f"   Press Ctrl+C to stop\n")
