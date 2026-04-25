@@ -172,8 +172,7 @@ const App = (() => {
         <!-- Room Charges -->
         ${Charges.renderChargesSection(res.id)}
 
-        <!-- Grand Total -->
-        ${quote || chargesTotal > 0 ? `
+        <!-- Grand Total — always rendered so updateGrandTotal() can find the elements -->
         <div style="background:#1a535c;color:white;border-radius:10px;padding:14px 16px;margin-top:16px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;opacity:0.8;margin-bottom:4px;">
             <span>Accommodation</span>
@@ -186,7 +185,7 @@ const App = (() => {
                       border-top:1px solid rgba(255,255,255,0.3);padding-top:8px;">
             <span>TOTAL DUE</span><span id="grand-total-display">$${grandTotal.toFixed(2)}</span>
           </div>
-        </div>` : ""}
+        </div>
 
         <!-- Action buttons -->
         <div class="flex items-center justify-between pt-4 border-t gap-3 flex-wrap mt-4">
