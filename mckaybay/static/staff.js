@@ -558,10 +558,15 @@ const Staff = (() => {
     h1 { font-size: 16px; margin: 0 0 2px; }
     h2 { font-size: 13px; font-weight: normal; color: #64748b; margin: 0 0 12px; }
     table { border-collapse: collapse; width: 100%; }
+    thead th { height: 36px; }
+    tbody td { height: 64px; vertical-align: top; padding: 5px 4px !important; }
     .legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
     @media print {
-      body { margin: 10px; }
+      @page { size: landscape; margin: 12mm; }
+      body { margin: 0; }
       button { display: none; }
+      thead th { height: 36px; }
+      tbody td { height: 64px; vertical-align: top; }
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
