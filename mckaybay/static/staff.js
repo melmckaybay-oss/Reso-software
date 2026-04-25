@@ -10,10 +10,10 @@ const Staff = (() => {
   const LABEL_W = 150;
   const CELL_H  = 56;
 
-  // Compact mode dimensions
-  const COMPACT_CW = 38;
+  // Compact mode dimensions — same look as normal but smaller to fit more days
+  const COMPACT_CW = 72;
   const COMPACT_LW = 110;
-  const COMPACT_CH = 30;
+  const COMPACT_CH = 38;
 
   const ROLE_COLOURS = {
     "off":            "#e5e7eb",
@@ -209,9 +209,9 @@ const Staff = (() => {
         return `<div style="min-width:${CW}px;width:${CW}px;height:40px;display:flex;flex-direction:column;
                   align-items:center;justify-content:center;border-right:1px solid #e5e7eb;flex-shrink:0;
                   background:${isToday?"#fef08a":isWeekend?"#f3f4f6":"white"};
-                  font-size:9px;font-weight:${isToday?"700":"500"};color:${isToday?"#713f12":"#374151"};">
-          <span style="font-weight:700">${d.toLocaleDateString("en-CA",{weekday:"narrow"})}</span>
-          <span style="opacity:0.75">${d.getDate()}</span>
+                  font-size:10px;font-weight:${isToday?"700":"500"};color:${isToday?"#713f12":"#374151"};">
+          <span style="font-weight:600">${d.toLocaleDateString("en-CA",{weekday:"short"})}</span>
+          <span style="opacity:0.75">${d.toLocaleDateString("en-CA",{month:"numeric",day:"numeric"})}</span>
         </div>`;
       }
       return `<div style="min-width:${CW}px;width:${CW}px;height:48px;display:flex;flex-direction:column;
@@ -236,16 +236,25 @@ const Staff = (() => {
         const safeRole = role.replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
         if (compactMode) {
-          const short = roleShort(role);
           return `<div style="min-width:${CW}px;width:${CW}px;height:${CH}px;
                     border-right:1px solid #e5e7eb;border-bottom:1px solid #f0f0f0;
-                    flex-shrink:0;background:${bg};display:flex;align-items:center;justify-content:center;
-                    cursor:pointer;${isToday&&!role?"outline:1px solid #fbbf24;":""}"
-                    title="${safeRole}"
+                    flex-shrink:0;padding:2px;background:${isToday&&!role?"#fefce8":"transparent"};"
                     onmouseenter="${role?`Staff.showTooltip(event,'${safeRole}')`:''}"
-                    onmouseleave="Staff.hideTooltip()"
-                    onclick="Staff.switchToNormalAndFocus('${s.id}','${iso}')">
-            <span style="font-size:9px;font-weight:700;color:#1e293b;opacity:0.8;">${short}</span>
+                    onmouseleave="Staff.hideTooltip()">
+            <div style="width:100%;height:100%;border-radius:4px;background:${bg};
+                        ${role?"border:1px solid rgba(0,0,0,0.08);":""}
+                        display:flex;align-items:center;justify-content:center;overflow:hidden;">
+              <input type="text" value="${role.replace(/"/g,"&quot;")}"
+                data-staff="${s.id}" data-date="${iso}"
+                placeholder=""
+                style="width:100%;height:100%;border:none;border-radius:4px;padding:2px 4px;
+                       font-size:10px;font-weight:600;background:transparent;
+                       cursor:text;box-shadow:none;outline:none;color:#1e293b;text-align:center;"
+                onchange="Staff.saveCell(this)"
+                onkeydown="if(event.key==='Tab'){event.preventDefault();Staff.saveCell(this);Staff.focusNext(this);}"
+                onfocus="this.closest('div').style.outline='2px solid #3b82f6';"
+                onblur="Staff.refreshCell(this);this.closest('div').style.outline='';" />
+            </div>
           </div>`;
         }
 
@@ -343,7 +352,7 @@ const Staff = (() => {
         </div>
 
         ${compactMode ? `<div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
-          📊 <strong>Compact view</strong> — ${rangeLabel} — click any cell to switch to normal view and edit it
+          📊 <strong>Compact view</strong> — ${rangeLabel} — same as normal view but scaled down to show more days at once
         </div>` : ""}
 
         <!-- Role legend -->
@@ -396,7 +405,7 @@ const Staff = (() => {
         </div>
         <p class="text-xs text-gray-400 mt-2">
           ${compactMode
-            ? "Click any cell to switch to normal view and edit • Hover for details"
+            ? "Compact view — same editing as normal, just smaller • Hover for full text • Tab moves to next cell"
             : "Click any cell to type a role and time • Hover a filled cell to see details • Press Tab to move to next cell"}
         </p>
       </div>
