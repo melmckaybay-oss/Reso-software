@@ -1,6 +1,7 @@
 /**
  * McKay Bay Lodge — Staff Schedule
  * Gantt-style weekly view. Fixed staff list, type role+time into each day cell.
+ * Features: normal/compact (macro) view, print schedule, email schedule.
  */
 
 const Staff = (() => {
@@ -9,26 +10,30 @@ const Staff = (() => {
   const LABEL_W = 150;
   const CELL_H  = 56;
 
+  // Compact mode dimensions
+  const COMPACT_CW = 38;
+  const COMPACT_LW = 110;
+  const COMPACT_CH = 30;
+
   const ROLE_COLOURS = {
     "off":            "#e5e7eb",
     "dock":           "#bfdbfe",
+    "dk":             "#bfdbfe",
     "housekeeping":   "#ddd6fe",
     "hk":             "#ddd6fe",
     "serve":          "#bbf7d0",
     "srv":            "#bbf7d0",
     "server":         "#bbf7d0",
     "split":          "#fde68a",
+    "sp":             "#fde68a",
     "dinner cook":    "#fed7aa",
     "dc":             "#fed7aa",
     "breakfast cook": "#fecaca",
     "bc":             "#fecaca",
     "guide":          "#a5f3fc",
     "gd":             "#a5f3fc",
-    "dock":           "#bfdbfe",
-    "dk":             "#bfdbfe",
   };
 
-  // Abbreviation expansion map — typed shorthand → full display text
   const ABBREV = {
     "hk":   "Housekeeping",
     "bc":   "Breakfast Cook",
@@ -41,7 +46,6 @@ const Staff = (() => {
     "sp":   "Split",
   };
 
-  // Legend display (full names only)
   const LEGEND_ROLES = {
     "Off":            "#e5e7eb",
     "Dock":           "#bfdbfe",
@@ -53,7 +57,6 @@ const Staff = (() => {
     "Guide":          "#a5f3fc",
   };
 
-  // Abbreviation hint shown in legend
   const ABBREV_HINTS = {
     "Off":            "off",
     "Dock":           "dk",
@@ -67,11 +70,9 @@ const Staff = (() => {
 
   function expandAbbrev(text) {
     if (!text) return text;
-    // Only expand if the first word (before any space/number) is an abbreviation
     const lower = text.toLowerCase().trim();
     const firstWord = lower.split(/[\s\d]/)[0];
     if (ABBREV[firstWord]) {
-      // Replace just the first word, keep the rest (e.g. time)
       return text.trim().replace(new RegExp("^" + firstWord, "i"), ABBREV[firstWord]);
     }
     return text;
@@ -86,12 +87,28 @@ const Staff = (() => {
     return "#e0f2fe";
   }
 
+  // Short display label for compact cells
+  function roleShort(text) {
+    if (!text) return "";
+    const lower = text.toLowerCase().trim();
+    const firstWord = lower.split(/[\s\d]/)[0];
+    const shorts = { housekeeping:"HK", "breakfast cook":"BC", "dinner cook":"DC",
+      server:"SRV", split:"SP", dock:"DK", guide:"GD", off:"—" };
+    for (const [k, v] of Object.entries(shorts)) {
+      if (lower.startsWith(k)) return v;
+    }
+    // fallback: first 3 chars uppercase
+    return text.slice(0,3).toUpperCase();
+  }
+
   let staffList    = [];
-  let scheduleMap  = {};  // "staffId_date" -> role
+  let scheduleMap  = {};
   let viewStart    = null;
   let viewDays     = 14;
+  let compactMode  = false;
 
-  // Tooltip element
+  // ── Tooltip ──────────────────────────────────────────────────────────────
+
   function getTooltip() { return document.getElementById("staff-tooltip"); }
 
   function showTooltip(event, text) {
@@ -126,6 +143,8 @@ const Staff = (() => {
     document.removeEventListener("mousemove", moveTooltip);
   }
 
+  // ── Date helpers ─────────────────────────────────────────────────────────
+
   function monday(d) {
     const day = new Date(d);
     const diff = (day.getDay() + 6) % 7;
@@ -144,6 +163,12 @@ const Staff = (() => {
   function today() {
     const d = new Date(); d.setHours(0,0,0,0); return d;
   }
+
+  function fmtDate(d) {
+    return d.toLocaleDateString("en-CA", { weekday:"short", month:"short", day:"numeric" });
+  }
+
+  // ── Data loading ─────────────────────────────────────────────────────────
 
   async function loadSchedule() {
     const start = isoDate(viewStart);
@@ -165,43 +190,73 @@ const Staff = (() => {
     buildUI(container);
   }
 
+  // ── UI builder ────────────────────────────────────────────────────────────
+
   function buildUI(container) {
-    const days    = Array.from({ length: viewDays }, (_, i) => addDays(viewStart, i));
+    const CW = compactMode ? COMPACT_CW : CELL_W;
+    const CH = compactMode ? COMPACT_CH : CELL_H;
+    const LW = compactMode ? COMPACT_LW : LABEL_W;
+
+    const days     = Array.from({ length: viewDays }, (_, i) => addDays(viewStart, i));
     const todayIso = isoDate(today());
 
+    // Day header cells
     const dayHeaders = days.map(d => {
       const iso       = isoDate(d);
       const isToday   = iso === todayIso;
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const dayName   = d.toLocaleDateString("en-CA", { weekday: "short" });
-      const dayNum    = d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-      return `<div style="min-width:${CELL_W}px;width:${CELL_W}px;height:48px;display:flex;flex-direction:column;
+      if (compactMode) {
+        return `<div style="min-width:${CW}px;width:${CW}px;height:40px;display:flex;flex-direction:column;
+                  align-items:center;justify-content:center;border-right:1px solid #e5e7eb;flex-shrink:0;
+                  background:${isToday?"#fef08a":isWeekend?"#f3f4f6":"white"};
+                  font-size:9px;font-weight:${isToday?"700":"500"};color:${isToday?"#713f12":"#374151"};">
+          <span style="font-weight:700">${d.toLocaleDateString("en-CA",{weekday:"narrow"})}</span>
+          <span style="opacity:0.75">${d.getDate()}</span>
+        </div>`;
+      }
+      return `<div style="min-width:${CW}px;width:${CW}px;height:48px;display:flex;flex-direction:column;
                 align-items:center;justify-content:center;border-right:1px solid #e5e7eb;flex-shrink:0;
-                background:${isToday ? "#fef08a" : isWeekend ? "#f3f4f6" : "white"};
+                background:${isToday?"#fef08a":isWeekend?"#f3f4f6":"white"};
                 font-size:11px;font-weight:${isToday?"700":"500"};color:${isToday?"#713f12":"#374151"};">
-        <span style="font-weight:600">${dayName}</span>
-        <span style="opacity:0.75">${dayNum}</span>
+        <span style="font-weight:600">${d.toLocaleDateString("en-CA",{weekday:"short"})}</span>
+        <span style="opacity:0.75">${d.toLocaleDateString("en-CA",{month:"numeric",day:"numeric"})}</span>
       </div>`;
     }).join("");
 
+    // Staff rows
     const staffRows = staffList.map((s, si) => {
       const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+
       const cells = days.map(d => {
-        const iso     = isoDate(d);
-        const key     = `${s.id}_${iso}`;
-        const role    = scheduleMap[key] || "";
-        const bg      = role ? roleColour(role) : (iso === todayIso ? "#fefce8" : rowBg);
-        const isToday = iso === todayIso;
+        const iso      = isoDate(d);
+        const key      = `${s.id}_${iso}`;
+        const role     = scheduleMap[key] || "";
+        const bg       = role ? roleColour(role) : (iso === todayIso ? "#fefce8" : rowBg);
+        const isToday  = iso === todayIso;
         const safeRole = role.replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
-        return `<div style="min-width:${CELL_W}px;width:${CELL_W}px;height:${CELL_H}px;
+        if (compactMode) {
+          const short = roleShort(role);
+          return `<div style="min-width:${CW}px;width:${CW}px;height:${CH}px;
+                    border-right:1px solid #e5e7eb;border-bottom:1px solid #f0f0f0;
+                    flex-shrink:0;background:${bg};display:flex;align-items:center;justify-content:center;
+                    cursor:pointer;${isToday&&!role?"outline:1px solid #fbbf24;":""}"
+                    title="${safeRole}"
+                    onmouseenter="${role?`Staff.showTooltip(event,'${safeRole}')`:''}"
+                    onmouseleave="Staff.hideTooltip()"
+                    onclick="Staff.switchToNormalAndFocus('${s.id}','${iso}')">
+            <span style="font-size:9px;font-weight:700;color:#1e293b;opacity:0.8;">${short}</span>
+          </div>`;
+        }
+
+        return `<div style="min-width:${CW}px;width:${CW}px;height:${CH}px;
                   border-right:1px solid #e5e7eb;border-bottom:1px solid #f0f0f0;
-                  flex-shrink:0;padding:3px;background:${isToday && !role ? "#fefce8" : "transparent"};"
-                  onmouseenter="${role ? `Staff.showTooltip(event,'${safeRole}')` : ''}"
+                  flex-shrink:0;padding:3px;background:${isToday&&!role?"#fefce8":"transparent"};"
+                  onmouseenter="${role?`Staff.showTooltip(event,'${safeRole}')`:''}"
                   onmouseleave="Staff.hideTooltip()">
           <div style="width:100%;height:100%;border-radius:5px;background:${bg};
-                      ${role ? 'border:1px solid rgba(0,0,0,0.08);' : ''}">
-            <input type="text" value="${role.replace(/"/g, '&quot;')}"
+                      ${role?"border:1px solid rgba(0,0,0,0.08);":""}">
+            <input type="text" value="${role.replace(/"/g,"&quot;")}"
               data-staff="${s.id}" data-date="${iso}"
               placeholder="e.g. hk, bc 7am"
               title="Shortcuts: hk=Housekeeping, bc=Breakfast Cook, dc=Dinner Cook, srv=Server, gd=Guide, dk=Dock, sp=Split, off=Off"
@@ -217,46 +272,81 @@ const Staff = (() => {
       }).join("");
 
       return `<div style="display:flex;align-items:stretch;background:${rowBg};">
-        <div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:${CELL_H}px;padding:0 12px;display:flex;
-          align-items:center;justify-content:space-between;font-size:13px;font-weight:600;
+        <div style="min-width:${LW}px;width:${LW}px;height:${CH}px;padding:0 12px;display:flex;
+          align-items:center;justify-content:space-between;font-size:${compactMode?"11":"13"}px;font-weight:600;
           border-right:2px solid #d1d5db;border-bottom:1px solid #f0f0f0;
           background:${rowBg};position:sticky;left:0;z-index:10;">
           <span>${s.name}</span>
-          <button onclick="Staff.removeStaff(${s.id},'${s.name}')"
+          ${compactMode ? "" : `<button onclick="Staff.removeStaff(${s.id},'${s.name}')"
             style="color:#d1d5db;font-size:18px;border:none;background:none;cursor:pointer;
                    padding:0 2px;line-height:1;opacity:0.5;"
             onmouseenter="this.style.opacity='1';this.style.color='#ef4444';"
             onmouseleave="this.style.opacity='0.5';this.style.color='#d1d5db';"
-            title="Remove ${s.name}">×</button>
+            title="Remove ${s.name}">×</button>`}
         </div>
         ${cells}
       </div>`;
     }).join("");
 
+    const rangeLabel = `${fmtDate(viewStart)} – ${fmtDate(addDays(viewStart, viewDays-1))}`;
+
     container.innerHTML = `
       <div class="max-w-full">
-        <!-- Controls -->
-        <div class="flex items-center gap-2 mb-3 flex-wrap">
+        <!-- Controls row 1: navigation -->
+        <div class="flex items-center gap-2 mb-2 flex-wrap">
           <button class="btn btn-secondary" onclick="Staff.navigate(-7)">← Week</button>
-          <button class="btn btn-secondary" onclick="Staff.navigate(-14)">← 2 Weeks</button>
+          <button class="btn btn-secondary" onclick="Staff.navigate(-14)">← 2 Wks</button>
           <button class="btn btn-secondary" onclick="Staff.goToToday()">Today</button>
-          <button class="btn btn-secondary" onclick="Staff.navigate(14)">2 Weeks →</button>
+          <button class="btn btn-secondary" onclick="Staff.navigate(14)">2 Wks →</button>
           <button class="btn btn-secondary" onclick="Staff.navigate(7)">Week →</button>
-          <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-left:4px;">
             <label style="margin:0;font-size:12px;color:#6b7280;white-space:nowrap;">Jump to:</label>
-            <input type="month" style="width:150px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
+            <input type="month" style="width:145px;padding:4px 8px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
               onchange="Staff.jumpToMonth(this.value)" title="Jump to month" />
           </div>
           <div class="flex-1"></div>
+
+          <!-- View size selector -->
           <select onchange="Staff.setViewDays(+this.value)"
             style="width:auto;padding:5px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;">
             <option value="7"  ${viewDays===7?"selected":""}>1 week</option>
             <option value="14" ${viewDays===14?"selected":""}>2 weeks</option>
             <option value="28" ${viewDays===28?"selected":""}>4 weeks</option>
+            <option value="42" ${viewDays===42?"selected":""}>6 weeks</option>
           </select>
+
+          <!-- Compact toggle -->
+          <button onclick="Staff.toggleCompact()"
+            style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;
+                   background:${compactMode?"#1a535c":"#f1f5f9"};
+                   color:${compactMode?"white":"#374151"};
+                   border:1px solid ${compactMode?"#1a535c":"#d1d5db"};"
+            title="${compactMode?"Switch to normal editable view":"Switch to compact overview (more days visible)"}">
+            ${compactMode?"✏ Normal View":"📊 Compact View"}
+          </button>
+
+          <!-- Print -->
+          <button onclick="Staff.printSchedule()"
+            style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;
+                   background:#f1f5f9;color:#374151;border:1px solid #d1d5db;"
+            title="Print the current schedule">
+            🖨 Print
+          </button>
+
+          <!-- Email -->
+          <button onclick="Staff.emailSchedule()"
+            style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;
+                   background:#f1f5f9;color:#374151;border:1px solid #d1d5db;"
+            title="Copy schedule as HTML to paste into an email">
+            ✉ Email Schedule
+          </button>
         </div>
 
-        <!-- Role legend with abbreviations -->
+        ${compactMode ? `<div style="font-size:12px;color:#6b7280;margin-bottom:8px;">
+          📊 <strong>Compact view</strong> — ${rangeLabel} — click any cell to switch to normal view and edit it
+        </div>` : ""}
+
+        <!-- Role legend -->
         <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
           <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">
             Role shortcuts — type the short code into any cell
@@ -278,19 +368,20 @@ const Staff = (() => {
           </div>
         </div>
 
-        <!-- Add staff -->
+        <!-- Add staff (hidden in compact mode) -->
+        ${compactMode ? "" : `
         <div class="flex items-center gap-2 mb-3">
           <input type="text" id="new-staff-name" placeholder="New staff member name…"
             style="width:220px;padding:6px 10px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;"
             onkeydown="if(event.key==='Enter')Staff.addStaff()" />
           <button class="btn btn-primary text-sm py-1.5" onclick="Staff.addStaff()">+ Add Staff</button>
-        </div>
+        </div>`}
 
         <!-- Schedule grid -->
-        <div style="overflow-x:auto;background:white;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-          <!-- Header row -->
+        <div id="staff-grid" style="overflow-x:auto;background:white;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+          <!-- Header -->
           <div style="display:flex;position:sticky;top:0;z-index:25;background:white;border-bottom:2px solid #cbd5e1;">
-            <div style="min-width:${LABEL_W}px;width:${LABEL_W}px;height:48px;position:sticky;left:0;z-index:26;
+            <div style="min-width:${LW}px;width:${LW}px;height:${compactMode?40:48}px;position:sticky;left:0;z-index:26;
               background:#1a535c;border-right:2px solid #0f3a42;flex-shrink:0;
               display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:700;
               color:white;text-transform:uppercase;letter-spacing:0.05em;">Staff</div>
@@ -301,18 +392,22 @@ const Staff = (() => {
                 <div class="text-4xl mb-3">👤</div>
                 <p class="text-sm">No staff members yet. Add your first staff member above.</p>
               </div>`
-            : staffRows
-          }
+            : staffRows}
         </div>
-        <p class="text-xs text-gray-400 mt-2">Click any cell to type a role and time • Hover a filled cell to see details • Press Tab to move to next cell</p>
+        <p class="text-xs text-gray-400 mt-2">
+          ${compactMode
+            ? "Click any cell to switch to normal view and edit • Hover for details"
+            : "Click any cell to type a role and time • Hover a filled cell to see details • Press Tab to move to next cell"}
+        </p>
       </div>
     `;
   }
 
+  // ── Cell editing ─────────────────────────────────────────────────────────
+
   async function saveCell(input) {
     const staffId  = input.dataset.staff;
     const workDate = input.dataset.date;
-    // Expand abbreviation before saving
     const expanded = expandAbbrev(input.value.trim());
     input.value = expanded;
     const role = expanded;
@@ -335,13 +430,26 @@ const Staff = (() => {
   }
 
   function focusNext(input) {
-    // Find all inputs in the grid and focus the next one
     const inputs = Array.from(document.querySelectorAll("input[data-staff][data-date]"));
     const idx = inputs.indexOf(input);
-    if (idx >= 0 && idx < inputs.length - 1) {
-      inputs[idx + 1].focus();
-    }
+    if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
   }
+
+  // Clicking a compact cell switches to normal view and focuses that cell
+  function switchToNormalAndFocus(staffId, date) {
+    compactMode = false;
+    // Find which day offset this date is from viewStart
+    const targetDate = new Date(date + "T12:00:00");
+    const dayOffset = Math.round((targetDate - viewStart) / 86400000);
+    buildUI(document.getElementById("main-content"));
+    // Focus the input after render
+    setTimeout(() => {
+      const input = document.querySelector(`input[data-staff="${staffId}"][data-date="${date}"]`);
+      if (input) input.focus();
+    }, 50);
+  }
+
+  // ── Staff management ─────────────────────────────────────────────────────
 
   async function addStaff() {
     const input = document.getElementById("new-staff-name");
@@ -363,6 +471,8 @@ const Staff = (() => {
       buildUI(document.getElementById("main-content"));
     } catch(e) { alert("Could not remove staff: " + e.message); }
   }
+
+  // ── Navigation ───────────────────────────────────────────────────────────
 
   function navigate(delta) {
     viewStart = addDays(viewStart, delta);
@@ -386,5 +496,211 @@ const Staff = (() => {
     loadSchedule().then(() => buildUI(document.getElementById("main-content")));
   }
 
-  return { render, navigate, goToToday, setViewDays, jumpToMonth, saveCell, refreshCell, focusNext, addStaff, removeStaff, showTooltip, hideTooltip };
+  function toggleCompact() {
+    compactMode = !compactMode;
+    buildUI(document.getElementById("main-content"));
+  }
+
+  // ── Print ────────────────────────────────────────────────────────────────
+
+  function printSchedule() {
+    const days = Array.from({ length: viewDays }, (_, i) => addDays(viewStart, i));
+    const rangeLabel = `${fmtDate(viewStart)} – ${fmtDate(addDays(viewStart, viewDays-1))}`;
+
+    // Build a simple print-friendly HTML table
+    const headerCells = days.map(d => {
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const label = d.toLocaleDateString("en-CA", { weekday:"short", month:"numeric", day:"numeric" });
+      return `<th style="background:${isWeekend?"#f3f4f6":"#1a535c"};color:${isWeekend?"#374151":"white"};
+                  padding:5px 3px;font-size:10px;border:1px solid #d1d5db;min-width:52px;">${label}</th>`;
+    }).join("");
+
+    const bodyRows = staffList.map((s, si) => {
+      const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+      const cells = days.map(d => {
+        const role = scheduleMap[`${s.id}_${isoDate(d)}`] || "";
+        const bg   = role ? roleColour(role) : rowBg;
+        return `<td style="background:${bg};padding:4px 3px;font-size:10px;font-weight:${role?"600":"400"};
+                    border:1px solid #e5e7eb;text-align:center;">${role || ""}</td>`;
+      }).join("");
+      return `<tr>
+        <td style="padding:5px 8px;font-size:11px;font-weight:700;border:1px solid #d1d5db;
+                   background:${rowBg};white-space:nowrap;">${s.name}</td>
+        ${cells}
+      </tr>`;
+    }).join("");
+
+    const legendHtml = Object.entries(LEGEND_ROLES).map(([role, col]) =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:${col};
+                    padding:2px 8px;border-radius:4px;border:1px solid rgba(0,0,0,0.08);
+                    font-size:10px;font-weight:600;">${role}</span>`
+    ).join(" ");
+
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html>
+<html><head>
+  <title>McKay Bay Lodge — Staff Schedule</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; color: #1e293b; }
+    h1 { font-size: 16px; margin: 0 0 2px; }
+    h2 { font-size: 13px; font-weight: normal; color: #64748b; margin: 0 0 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    .legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+    @media print {
+      body { margin: 10px; }
+      button { display: none; }
+    }
+  </style>
+</head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+    <div>
+      <h1>🏔 McKay Bay Lodge — Staff Schedule</h1>
+      <h2>${rangeLabel}</h2>
+    </div>
+    <button onclick="window.print()" style="padding:6px 16px;background:#1a535c;color:white;
+      border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🖨 Print</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="background:#1a535c;color:white;padding:5px 8px;font-size:11px;border:1px solid #0f3a42;text-align:left;">Staff</th>
+        ${headerCells}
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+  <div class="legend">${legendHtml}</div>
+  <p style="font-size:9px;color:#94a3b8;margin-top:8px;">Printed from McKay Bay Lodge Reservations — ${new Date().toLocaleDateString("en-CA")}</p>
+</body></html>`);
+    win.document.close();
+    // Auto-trigger print dialog after a short delay
+    setTimeout(() => win.print(), 400);
+  }
+
+  // ── Email Schedule ───────────────────────────────────────────────────────
+
+  function emailSchedule() {
+    const days = Array.from({ length: viewDays }, (_, i) => addDays(viewStart, i));
+    const rangeLabel = `${fmtDate(viewStart)} – ${fmtDate(addDays(viewStart, viewDays-1))}`;
+
+    // Build HTML table for pasting into email
+    const headerCells = days.map(d => {
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const label = d.toLocaleDateString("en-CA", { weekday:"short", month:"numeric", day:"numeric" });
+      return `<th style="background:${isWeekend?"#f3f4f6":"#1a535c"};color:${isWeekend?"#374151":"white"};
+                  padding:5px 4px;font-size:11px;border:1px solid #d1d5db;min-width:56px;text-align:center;">${label}</th>`;
+    }).join("");
+
+    const bodyRows = staffList.map((s, si) => {
+      const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+      const cells = days.map(d => {
+        const role = scheduleMap[`${s.id}_${isoDate(d)}`] || "";
+        const bg   = role ? roleColour(role) : rowBg;
+        return `<td style="background:${bg};padding:5px 4px;font-size:11px;font-weight:${role?"600":"400"};
+                    border:1px solid #e5e7eb;text-align:center;">${role || "—"}</td>`;
+      }).join("");
+      return `<tr>
+        <td style="padding:5px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;
+                   background:${rowBg};white-space:nowrap;">${s.name}</td>
+        ${cells}
+      </tr>`;
+    }).join("");
+
+    const emailHtml = `<div style="font-family:system-ui,sans-serif;max-width:900px;">
+  <h2 style="color:#1a535c;margin:0 0 4px;">McKay Bay Lodge — Staff Schedule</h2>
+  <p style="color:#64748b;margin:0 0 14px;font-size:13px;">${rangeLabel}</p>
+  <table style="border-collapse:collapse;width:100%;">
+    <thead>
+      <tr>
+        <th style="background:#1a535c;color:white;padding:6px 10px;font-size:12px;
+                   border:1px solid #0f3a42;text-align:left;">Staff</th>
+        ${headerCells}
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+  <p style="font-size:10px;color:#94a3b8;margin-top:8px;">McKay Bay Lodge, Bamfield BC — ${new Date().toLocaleDateString("en-CA")}</p>
+</div>`;
+
+    // Show a modal with copy-to-clipboard button
+    const overlay = document.createElement("div");
+    overlay.id = "email-schedule-overlay";
+    overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.5);
+      z-index:9999;display:flex;align-items:center;justify-content:center;`;
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:12px;padding:24px;width:520px;max-width:95vw;
+                  box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;font-size:16px;font-weight:700;">✉ Email Schedule</h3>
+          <button onclick="document.getElementById('email-schedule-overlay').remove()"
+            style="border:none;background:none;font-size:22px;cursor:pointer;color:#9ca3af;">&times;</button>
+        </div>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">
+          Click <strong>Copy Schedule</strong> to copy a formatted HTML table to your clipboard,
+          then paste it directly into Gmail, Outlook, or Apple Mail.
+        </p>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#64748b;">
+          <strong>Schedule range:</strong> ${rangeLabel}<br>
+          <strong>Staff members:</strong> ${staffList.length}<br>
+          <strong>Days:</strong> ${viewDays}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button id="copy-schedule-btn" onclick="Staff._copyScheduleHtml()"
+            style="padding:10px 16px;background:#1a535c;color:white;border:none;border-radius:8px;
+                   font-size:14px;font-weight:700;cursor:pointer;">
+            📋 Copy Schedule to Clipboard
+          </button>
+          <button onclick="Staff._openPrintForEmail()"
+            style="padding:10px 16px;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;
+                   border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+            🖨 Open Print-Friendly Version Instead
+          </button>
+          <button onclick="document.getElementById('email-schedule-overlay').remove()"
+            style="padding:8px 16px;background:white;color:#6b7280;border:1px solid #e2e8f0;
+                   border-radius:8px;font-size:13px;cursor:pointer;">
+            Cancel
+          </button>
+        </div>
+        <div id="copy-status" style="margin-top:10px;font-size:13px;text-align:center;color:#16a34a;display:none;">
+          ✅ Copied! Now paste into your email (Ctrl+V or Cmd+V)
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    // Store HTML for the copy function
+    Staff._pendingEmailHtml = emailHtml;
+  }
+
+  async function _copyScheduleHtml() {
+    const html = Staff._pendingEmailHtml;
+    if (!html) return;
+    try {
+      // Use ClipboardItem for rich HTML copy
+      const blob = new Blob([html], { type: "text/html" });
+      await navigator.clipboard.write([new ClipboardItem({ "text/html": blob })]);
+      const status = document.getElementById("copy-status");
+      const btn = document.getElementById("copy-schedule-btn");
+      if (status) { status.style.display = "block"; }
+      if (btn) { btn.textContent = "✅ Copied!"; btn.style.background = "#16a34a"; }
+    } catch(e) {
+      // Fallback: open print version
+      alert("Clipboard copy not supported in this browser — opening print version instead.");
+      printSchedule();
+    }
+  }
+
+  function _openPrintForEmail() {
+    document.getElementById("email-schedule-overlay")?.remove();
+    printSchedule();
+  }
+
+  return {
+    render, navigate, goToToday, setViewDays, jumpToMonth, toggleCompact,
+    saveCell, refreshCell, focusNext, switchToNormalAndFocus,
+    addStaff, removeStaff,
+    showTooltip, hideTooltip,
+    printSchedule, emailSchedule,
+    _copyScheduleHtml, _openPrintForEmail,
+    _pendingEmailHtml: null,
+  };
 })();
