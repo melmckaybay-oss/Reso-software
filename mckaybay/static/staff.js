@@ -225,7 +225,7 @@ const Staff = (() => {
 
     // Staff rows
     const staffRows = staffList.map((s, si) => {
-      const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+      const rowBg = si % 2 === 0 ? "#ffffff" : "#e8eef5";
 
       const cells = days.map(d => {
         const iso      = isoDate(d);
@@ -529,7 +529,7 @@ const Staff = (() => {
     }).join("");
 
     const bodyRows = staffList.map((s, si) => {
-      const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+      const rowBg = si % 2 === 0 ? "#ffffff" : "#e8eef5";
       const cells = days.map(d => {
         const role = scheduleMap[`${s.id}_${isoDate(d)}`] || "";
         const bg   = role ? roleColour(role) : rowBg;
@@ -605,7 +605,7 @@ const Staff = (() => {
     }).join("");
 
     const bodyRows = staffList.map((s, si) => {
-      const rowBg = si % 2 === 0 ? "#ffffff" : "#f8fafc";
+      const rowBg = si % 2 === 0 ? "#ffffff" : "#e8eef5";
       const cells = days.map(d => {
         const role = scheduleMap[`${s.id}_${isoDate(d)}`] || "";
         const bg   = role ? roleColour(role) : rowBg;
