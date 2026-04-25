@@ -10,8 +10,8 @@ const Staff = (() => {
   const LABEL_W = 150;
   const CELL_H  = 56;
 
-  // Compact mode dimensions — same look as normal but smaller to fit more days
-  const COMPACT_CW = 72;
+  // Compact mode dimensions — narrow cells, more days visible
+  const COMPACT_CW = 48;
   const COMPACT_LW = 110;
   const COMPACT_CH = 38;
 
@@ -247,9 +247,10 @@ const Staff = (() => {
               <input type="text" value="${role.replace(/"/g,"&quot;")}"
                 data-staff="${s.id}" data-date="${iso}"
                 placeholder=""
-                style="width:100%;height:100%;border:none;border-radius:4px;padding:2px 4px;
-                       font-size:10px;font-weight:600;background:transparent;
-                       cursor:text;box-shadow:none;outline:none;color:#1e293b;text-align:center;"
+                style="width:100%;height:100%;border:none;border-radius:4px;padding:1px 3px;
+                       font-size:9px;font-weight:600;background:transparent;
+                       cursor:text;box-shadow:none;outline:none;color:#1e293b;text-align:center;
+                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                 onchange="Staff.saveCell(this)"
                 onkeydown="if(event.key==='Tab'){event.preventDefault();Staff.saveCell(this);Staff.focusNext(this);}"
                 onfocus="this.closest('div').style.outline='2px solid #3b82f6';"
@@ -322,6 +323,7 @@ const Staff = (() => {
             <option value="14" ${viewDays===14?"selected":""}>2 weeks</option>
             <option value="28" ${viewDays===28?"selected":""}>4 weeks</option>
             <option value="42" ${viewDays===42?"selected":""}>6 weeks</option>
+            <option value="56" ${viewDays===56?"selected":""}>8 weeks</option>
           </select>
 
           <!-- Compact toggle -->
@@ -507,7 +509,9 @@ const Staff = (() => {
 
   function toggleCompact() {
     compactMode = !compactMode;
-    buildUI(document.getElementById("main-content"));
+    if (compactMode && viewDays < 28) viewDays = 28;
+    if (!compactMode && viewDays > 14) viewDays = 14;
+    loadSchedule().then(() => buildUI(document.getElementById("main-content")));
   }
 
   // ── Print ────────────────────────────────────────────────────────────────
