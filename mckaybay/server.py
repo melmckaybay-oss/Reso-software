@@ -173,9 +173,9 @@ def _save_reservation_children(db, rid, d):
         )
     for ch in d.get("charters", []):
         db.execute(
-            "INSERT INTO charter_bookings (reservation_id,charter_date,charter_type,duration,num_guests) VALUES (?,?,?,?,?)",
+            "INSERT INTO charter_bookings (reservation_id,charter_date,charter_type,duration,num_guests,boat_id) VALUES (?,?,?,?,?,?)",
             (rid, ch["charter_date"], ch.get("charter_type", "fishing"),
-             ch.get("duration", "full_day"), ch.get("num_guests", 1))
+             ch.get("duration", "full_day"), ch.get("num_guests", 1), ch.get("boat_id"))
         )
 
 
@@ -750,6 +750,7 @@ if __name__ == "__main__":
             "ALTER TABLE guest_daily_sheet ADD COLUMN lunch_numbers TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE guest_daily_sheet ADD COLUMN dinner_530 INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE guest_daily_sheet ADD COLUMN dinner_700 INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE charter_bookings ADD COLUMN boat_id INTEGER",
         ]:
             try:
                 _conn2.execute(_alter)
