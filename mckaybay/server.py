@@ -533,6 +533,88 @@ def handle_charges(handler, method, path_parts, qs, body):
     error_response(handler, "Not found", 404)
 
 
+def handle_daily_tasks(handler, method, path_parts, qs, body):
+    db = get_db()
+    if method == "GET" and len(path_parts) == 2:
+        date_param = qs.get("date", [None])[0]
+        if not date_param:
+            db.close()
+            return error_response(handler, "date required")
+        row = db.execute("SELECT * FROM daily_tasks WHERE date=?", (date_param,)).fetchone()
+        db.close()
+        return json_response(handler, row_to_dict(row) or {
+            "date": date_param, "hot_tub": 0, "main_toilet": 0, "porch": 0,
+            "sandwiches_count": 0, "staff_notes": ""
+        })
+
+    if method in ("POST", "PUT") and len(path_parts) == 2:
+        d = body
+        date_param = d.get("date")
+        if not date_param:
+            db.close()
+            return error_response(handler, "date required")
+        db.execute(
+            """INSERT INTO daily_tasks (date,hot_tub,main_toilet,porch,sandwiches_count,staff_notes)
+               VALUES (?,?,?,?,?,?)
+               ON CONFLICT(date) DO UPDATE SET
+                 hot_tub=excluded.hot_tub, main_toilet=excluded.main_toilet,
+                 porch=excluded.porch, sandwiches_count=excluded.sandwiches_count,
+                 staff_notes=excluded.staff_notes""",
+            (date_param, int(d.get("hot_tub",0)), int(d.get("main_toilet",0)),
+             int(d.get("porch",0)), int(d.get("sandwiches_count",0)), d.get("staff_notes",""))
+        )
+        db.commit()
+        row = row_to_dict(db.execute("SELECT * FROM daily_tasks WHERE date=?", (date_param,)).fetchone())
+        db.close()
+        return json_response(handler, row)
+
+    db.close()
+    error_response(handler, "Not found", 404)
+
+
+def handle_guest_sheet(handler, method, path_parts, qs, body):
+    db = get_db()
+    if method == "GET" and len(path_parts) == 2:
+        date_param = qs.get("date", [None])[0]
+        if not date_param:
+            db.close()
+            return error_response(handler, "date required")
+        rows = db.execute("SELECT * FROM guest_daily_sheet WHERE date=?", (date_param,)).fetchall()
+        db.close()
+        return json_response(handler, rows_to_list(rows))
+
+    if method in ("POST", "PUT") and len(path_parts) == 2:
+        d = body
+        date_param = d.get("date")
+        res_id = d.get("reservation_id")
+        if not date_param or not res_id:
+            db.close()
+            return error_response(handler, "date and reservation_id required")
+        db.execute(
+            """INSERT INTO guest_daily_sheet
+               (date,reservation_id,breakfast_type,breakfast_time,lunch_type,lunch_time,
+                dinner_time,payment_done,cleaning_status,room_notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(date,reservation_id) DO UPDATE SET
+                 breakfast_type=excluded.breakfast_type, breakfast_time=excluded.breakfast_time,
+                 lunch_type=excluded.lunch_type, lunch_time=excluded.lunch_time,
+                 dinner_time=excluded.dinner_time, payment_done=excluded.payment_done,
+                 cleaning_status=excluded.cleaning_status, room_notes=excluded.room_notes""",
+            (date_param, res_id, d.get("breakfast_type",""), d.get("breakfast_time",""),
+             d.get("lunch_type",""), d.get("lunch_time",""), d.get("dinner_time",""),
+             int(d.get("payment_done",0)), d.get("cleaning_status",""), d.get("room_notes",""))
+        )
+        db.commit()
+        row = row_to_dict(db.execute(
+            "SELECT * FROM guest_daily_sheet WHERE date=? AND reservation_id=?", (date_param, res_id)
+        ).fetchone())
+        db.close()
+        return json_response(handler, row)
+
+    db.close()
+    error_response(handler, "Not found", 404)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"  {self.address_string()} {fmt % args}")
@@ -578,6 +660,10 @@ class Handler(BaseHTTPRequestHandler):
                 return handle_staff(self, method, path_parts, qs, body)
             if resource == "charges":
                 return handle_charges(self, method, path_parts, qs, body)
+            if resource == "daily-tasks":
+                return handle_daily_tasks(self, method, path_parts, qs, body)
+            if resource == "daily-sheet":
+                return handle_guest_sheet(self, method, path_parts, qs, body)
 
         error_response(self, "Not found", 404)
 
@@ -619,6 +705,39 @@ if __name__ == "__main__":
         print("   ✓ room_charges table ready")
     except Exception as _e:
         print(f"   ⚠ room_charges migration: {_e}")
+    try:
+        _conn2 = get_db()
+        _conn2.execute("""
+            CREATE TABLE IF NOT EXISTS daily_tasks (
+                date             TEXT PRIMARY KEY,
+                hot_tub          INTEGER NOT NULL DEFAULT 0,
+                main_toilet      INTEGER NOT NULL DEFAULT 0,
+                porch            INTEGER NOT NULL DEFAULT 0,
+                sandwiches_count INTEGER NOT NULL DEFAULT 0,
+                staff_notes      TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        _conn2.execute("""
+            CREATE TABLE IF NOT EXISTS guest_daily_sheet (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                date            TEXT NOT NULL,
+                reservation_id  INTEGER NOT NULL,
+                breakfast_type  TEXT NOT NULL DEFAULT '',
+                breakfast_time  TEXT NOT NULL DEFAULT '',
+                lunch_type      TEXT NOT NULL DEFAULT '',
+                lunch_time      TEXT NOT NULL DEFAULT '',
+                dinner_time     TEXT NOT NULL DEFAULT '',
+                payment_done    INTEGER NOT NULL DEFAULT 0,
+                cleaning_status TEXT NOT NULL DEFAULT '',
+                room_notes      TEXT NOT NULL DEFAULT '',
+                UNIQUE(date, reservation_id)
+            )
+        """)
+        _conn2.commit()
+        _conn2.close()
+        print("   ✓ staff sheet tables ready")
+    except Exception as _e:
+        print(f"   ⚠ staff sheet migration: {_e}")
     print(f"\n🏔  McKay Bay Lodge — Reservation Software")
     print(f"   Running at http://localhost:{PORT}")
     print(f"   Press Ctrl+C to stop\n")
