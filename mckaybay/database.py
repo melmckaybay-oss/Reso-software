@@ -248,3 +248,34 @@ def full_reservation(db, rid):
         "SELECT * FROM charter_bookings WHERE reservation_id = ? ORDER BY charter_date", (rid,)
     ).fetchall())
     return res
+
+
+def _ensure_staff_sheet_tables(conn):
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS daily_tasks (
+            date             TEXT PRIMARY KEY,
+            hot_tub          INTEGER NOT NULL DEFAULT 0,
+            main_toilet      INTEGER NOT NULL DEFAULT 0,
+            porch            INTEGER NOT NULL DEFAULT 0,
+            sandwiches_count INTEGER NOT NULL DEFAULT 0,
+            staff_notes      TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS guest_daily_sheet (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            date            TEXT NOT NULL,
+            reservation_id  INTEGER NOT NULL,
+            breakfast_type  TEXT NOT NULL DEFAULT '',
+            breakfast_time  TEXT NOT NULL DEFAULT '',
+            lunch_type      TEXT NOT NULL DEFAULT '',
+            lunch_time      TEXT NOT NULL DEFAULT '',
+            dinner_time     TEXT NOT NULL DEFAULT '',
+            payment_done    INTEGER NOT NULL DEFAULT 0,
+            cleaning_status TEXT NOT NULL DEFAULT '',
+            room_notes      TEXT NOT NULL DEFAULT '',
+            UNIQUE(date, reservation_id)
+        )
+    """)
+    conn.commit()
