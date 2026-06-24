@@ -48,6 +48,7 @@ const Daily = (() => {
           <button class="btn btn-secondary" onclick="Daily.changeDate('${date}', 1)">Next →</button>
           <button class="btn btn-secondary" onclick="Daily.render('${isoToday()}')">Today</button>
           <span class="text-gray-500 text-sm ml-2">${humanDate}</span>
+          <button class="btn btn-primary ml-auto" onclick="DailySheet.render('${date}')">📋 Open Staff Sheet</button>
         </div>
 
         <!-- Top summary strip -->
