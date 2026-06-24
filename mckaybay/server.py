@@ -544,7 +544,7 @@ def handle_daily_tasks(handler, method, path_parts, qs, body):
         db.close()
         return json_response(handler, row_to_dict(row) or {
             "date": date_param, "hot_tub": 0, "main_toilet": 0, "porch": 0,
-            "sandwiches_count": 0, "staff_notes": ""
+            "sandwiches_count": 0, "staff_notes": "", "breakfast_menu": "", "lunch_special": ""
         })
 
     if method in ("POST", "PUT") and len(path_parts) == 2:
@@ -554,14 +554,16 @@ def handle_daily_tasks(handler, method, path_parts, qs, body):
             db.close()
             return error_response(handler, "date required")
         db.execute(
-            """INSERT INTO daily_tasks (date,hot_tub,main_toilet,porch,sandwiches_count,staff_notes)
-               VALUES (?,?,?,?,?,?)
+            """INSERT INTO daily_tasks (date,hot_tub,main_toilet,porch,sandwiches_count,staff_notes,breakfast_menu,lunch_special)
+               VALUES (?,?,?,?,?,?,?,?)
                ON CONFLICT(date) DO UPDATE SET
                  hot_tub=excluded.hot_tub, main_toilet=excluded.main_toilet,
                  porch=excluded.porch, sandwiches_count=excluded.sandwiches_count,
-                 staff_notes=excluded.staff_notes""",
+                 staff_notes=excluded.staff_notes, breakfast_menu=excluded.breakfast_menu,
+                 lunch_special=excluded.lunch_special""",
             (date_param, int(d.get("hot_tub",0)), int(d.get("main_toilet",0)),
-             int(d.get("porch",0)), int(d.get("sandwiches_count",0)), d.get("staff_notes",""))
+             int(d.get("porch",0)), int(d.get("sandwiches_count",0) or 0), d.get("staff_notes",""),
+             d.get("breakfast_menu",""), d.get("lunch_special",""))
         )
         db.commit()
         row = row_to_dict(db.execute("SELECT * FROM daily_tasks WHERE date=?", (date_param,)).fetchone())
@@ -592,16 +594,19 @@ def handle_guest_sheet(handler, method, path_parts, qs, body):
             return error_response(handler, "date and reservation_id required")
         db.execute(
             """INSERT INTO guest_daily_sheet
-               (date,reservation_id,breakfast_type,breakfast_time,lunch_type,lunch_time,
-                dinner_time,payment_done,cleaning_status,room_notes)
-               VALUES (?,?,?,?,?,?,?,?,?,?)
+               (date,reservation_id,breakfast_type,breakfast_time,lunch_type,lunch_time,lunch_numbers,
+                dinner_time,dinner_530,dinner_700,payment_done,cleaning_status,room_notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(date,reservation_id) DO UPDATE SET
                  breakfast_type=excluded.breakfast_type, breakfast_time=excluded.breakfast_time,
                  lunch_type=excluded.lunch_type, lunch_time=excluded.lunch_time,
-                 dinner_time=excluded.dinner_time, payment_done=excluded.payment_done,
+                 lunch_numbers=excluded.lunch_numbers,
+                 dinner_time=excluded.dinner_time, dinner_530=excluded.dinner_530, dinner_700=excluded.dinner_700,
+                 payment_done=excluded.payment_done,
                  cleaning_status=excluded.cleaning_status, room_notes=excluded.room_notes""",
             (date_param, res_id, d.get("breakfast_type",""), d.get("breakfast_time",""),
-             d.get("lunch_type",""), d.get("lunch_time",""), d.get("dinner_time",""),
+             d.get("lunch_type",""), d.get("lunch_time",""), d.get("lunch_numbers",""),
+             d.get("dinner_time",""), int(d.get("dinner_530",0) or 0), int(d.get("dinner_700",0) or 0),
              int(d.get("payment_done",0)), d.get("cleaning_status",""), d.get("room_notes",""))
         )
         db.commit()
@@ -714,7 +719,9 @@ if __name__ == "__main__":
                 main_toilet      INTEGER NOT NULL DEFAULT 0,
                 porch            INTEGER NOT NULL DEFAULT 0,
                 sandwiches_count INTEGER NOT NULL DEFAULT 0,
-                staff_notes      TEXT NOT NULL DEFAULT ''
+                staff_notes      TEXT NOT NULL DEFAULT '',
+                breakfast_menu   TEXT NOT NULL DEFAULT '',
+                lunch_special    TEXT NOT NULL DEFAULT ''
             )
         """)
         _conn2.execute("""
@@ -726,13 +733,28 @@ if __name__ == "__main__":
                 breakfast_time  TEXT NOT NULL DEFAULT '',
                 lunch_type      TEXT NOT NULL DEFAULT '',
                 lunch_time      TEXT NOT NULL DEFAULT '',
+                lunch_numbers   TEXT NOT NULL DEFAULT '',
                 dinner_time     TEXT NOT NULL DEFAULT '',
+                dinner_530      INTEGER NOT NULL DEFAULT 0,
+                dinner_700      INTEGER NOT NULL DEFAULT 0,
                 payment_done    INTEGER NOT NULL DEFAULT 0,
                 cleaning_status TEXT NOT NULL DEFAULT '',
                 room_notes      TEXT NOT NULL DEFAULT '',
                 UNIQUE(date, reservation_id)
             )
         """)
+        # Migrations for databases created before these columns existed
+        for _alter in [
+            "ALTER TABLE daily_tasks ADD COLUMN breakfast_menu TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE daily_tasks ADD COLUMN lunch_special TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE guest_daily_sheet ADD COLUMN lunch_numbers TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE guest_daily_sheet ADD COLUMN dinner_530 INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE guest_daily_sheet ADD COLUMN dinner_700 INTEGER NOT NULL DEFAULT 0",
+        ]:
+            try:
+                _conn2.execute(_alter)
+            except Exception:
+                pass
         _conn2.commit()
         _conn2.close()
         print("   ✓ staff sheet tables ready")
