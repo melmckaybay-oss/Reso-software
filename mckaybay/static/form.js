@@ -301,6 +301,10 @@ const Form = (() => {
   }
 
   function renderChartersList() {
+    const boatOptions = accommodations
+      .filter(a => a.type === "charter_boat" || a.type === "contractor_boat")
+      .map(a => a.id ? `<option value="${a.id}">${a.name}</option>` : "")
+      .join("");
     return charters.map((ch, i) => `
       <div class="flex flex-wrap gap-2 mb-2 items-end">
         <div style="flex:1;min-width:130px">
@@ -326,6 +330,13 @@ const Form = (() => {
           <label>Guests</label>
           <input type="number" min="1" max="4" value="${ch.num_guests||1}"
             onchange="Form.updateCharter(${i},'num_guests',+this.value)" />
+        </div>
+        <div style="flex:1.4;min-width:150px">
+          <label>Boat (shows on calendar)</label>
+          <select onchange="Form.updateCharter(${i},'boat_id',this.value?+this.value:null)">
+            <option value="" ${!ch.boat_id?"selected":""}>— Not assigned —</option>
+            ${boatOptions.replace(`value="${ch.boat_id}"`, `value="${ch.boat_id}" selected`)}
+          </select>
         </div>
         <button class="text-red-400 hover:text-red-600 pb-1" onclick="Form.removeCharter(${i})">✕</button>
       </div>`).join("");
@@ -496,7 +507,7 @@ const Form = (() => {
   function removeDietary(i){ dietary.splice(i,1); refreshSection("dietary-list",renderDietaryList); }
   function addBoat()       { boats.push({boat_name:"",boat_length:""}); refreshSection("boats-list",renderBoatsList); }
   function removeBoat(i)   { boats.splice(i,1); refreshSection("boats-list",renderBoatsList); }
-  function addCharter()    { charters.push({charter_date:"",charter_type:"fishing",duration:"full_day",num_guests:1}); refreshSection("charters-list",renderChartersList); }
+  function addCharter()    { charters.push({charter_date:"",charter_type:"fishing",duration:"full_day",num_guests:1,boat_id:null}); refreshSection("charters-list",renderChartersList); }
   function removeCharter(i){ charters.splice(i,1); refreshSection("charters-list",renderChartersList); }
 
   function refreshSection(id, renderFn) { const el=document.getElementById(id); if(el) el.innerHTML=renderFn(); }

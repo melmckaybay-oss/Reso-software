@@ -145,7 +145,8 @@ const Calendar = (() => {
       const tint     = ROW_TINTS[rowIndex % ROW_TINTS.length];
       rowIndex++;
 
-      const accomRes = reservations.filter(res =>
+      const isBoat = accom.type === "charter_boat" || accom.type === "contractor_boat";
+      const accomRes = isBoat ? [] : reservations.filter(res =>
         res.rooms && res.rooms.some(r => r.accommodation_id === accom.id)
       );
 
@@ -166,7 +167,7 @@ const Calendar = (() => {
               data-date="${isoDate(d)}" data-accom="${accom.id}"
               onclick="Calendar.cellClick('${isoDate(d)}', ${accom.id})"></div>`;
           }).join("")}
-          ${buildBars(accom, accomRes, days)}
+          ${isBoat ? buildCharterBars(accom, days) : buildBars(accom, accomRes, days)}
         </div>
       </div>`;
     });
@@ -321,6 +322,35 @@ const Calendar = (() => {
     } catch (e) {
       alert("Error moving reservation: " + e.message);
     }
+  }
+
+  function buildCharterBars(accom, days) {
+    let html       = "";
+    const startISO = isoDate(days[0]);
+    const endISO   = isoDate(addDays(days[days.length - 1], 1));
+
+    reservations.forEach(res => {
+      (res.charters || []).forEach(ch => {
+        if (ch.boat_id !== accom.id) return;
+        const d = ch.charter_date;
+        if (!d || d < startISO || d >= endISO) return;
+
+        const offsetDays = daysBetween(days[0], parseISO(d));
+        const left  = offsetDays * CELL_W;
+        const width = CELL_W - 3;
+        const name  = `${res.first_name} ${res.last_name}`;
+        const durTag = ch.duration === "half_day" ? "½" : "";
+
+        html += `<div class="res-bar status-${res.status}"
+          style="left:${left}px;width:${width}px;font-size:10px;padding:0 4px;"
+          data-res-id="${res.id}"
+          onmouseenter="Calendar.showTooltip(event,${res.id})"
+          onmouseleave="Calendar.hideTooltip()"
+          onclick="Calendar.barClick(event,${res.id})"
+        >${durTag} ${name} (${ch.num_guests})</div>`;
+      });
+    });
+    return html;
   }
 
   // ── Tooltip ───────────────────────────────────────────────────────────────
